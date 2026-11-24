@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "historyId": "d2694acc-c15d-4ab5-863b-2e719a224d18",
+  "currentRevision": null,
+  "pendingChanges": false,
+  "files": {
+    "index.html": {
+      "hash": "f650ec38258b9f614b78013d437ba8bbd4f389d67dd46ebaef501ea189d1ed99",
+      "content": "/home/franescob/.cache/hyperframes/history/d2694acc-c15d-4ab5-863b-2e719a224d18/blobs/f6/f650ec38258b9f614b78013d437ba8bbd4f389d67dd46ebaef501ea189d1ed99"
+    },
+    "pov.js": {
+      "hash": "60059346f30ea233a2f0f9703aa47fbc89a5602946d3664f1a7fcb1772101046",
+      "content": "/home/franescob/.cache/hyperframes/history/d2694acc-c15d-4ab5-863b-2e719a224d18/blobs/60/60059346f30ea233a2f0f9703aa47fbc89a5602946d3664f1a7fcb1772101046"
+    }
+  },
+  "revisions": {},
+  "checks": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "snapshots": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "renders": {
+    "latest": {
+      "id": "89e868bb-911a-4a34-a239-ed6a7d80ca9e",
+      "completedAt": 1795546194899,
+      "output": "/home/franescob/Projects/kit-edicion-ia/proyectos/demo-laurgrowth/cuadros/muestra-bloques.mp4",
+      "status": "completed",
+      "revision": null
+    },
+    "retainedRevisions": []
+  },
+  "pendingArtifactCleanup": []
+}

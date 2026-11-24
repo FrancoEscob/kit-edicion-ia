@@ -1,0 +1,77 @@
+<template id="captions-template">
+  <div data-composition-id="captions" data-width="1080" data-height="1920">
+    <div id="pov-caption-stage"></div>
+    <style>
+      #pov-caption-stage { position: absolute; inset: 0; pointer-events: none; }
+      .pov-caption {
+        position: absolute;
+        top: 1330px;
+        left: 90px;
+        width: 900px;
+        opacity: 0;
+        text-align: center;
+        color: #ffe07a;
+        font: 850 66px/1.1 Inter, Arial, sans-serif;
+        letter-spacing: -.045em;
+        paint-order: stroke fill;
+        -webkit-text-stroke: 7px #181e26;
+      }
+      .pov-caption.clara { color: #fffaf0; }
+      .pov-caption.lila { color: #dfb8e7; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (() => {
+        const timer = gsap.timeline({ paused: true });
+        const stage = document.getElementById("pov-caption-stage");
+        const safeColor = (word) => ["clara", "lila"].includes(word.color) ? word.color : "";
+
+        function readWords() {
+          if (Array.isArray(window.BASE_PALABRAS)) return window.BASE_PALABRAS;
+          for (const path of ["base-palabras.json", "../base-palabras.json"]) {
+            try {
+              const request = new XMLHttpRequest();
+              request.open("GET", path, false);
+              request.send();
+              if (request.status < 200 || request.status >= 300) continue;
+              const words = JSON.parse(request.responseText);
+              if (Array.isArray(words)) return words;
+            } catch {
+              // El montaje también puede inyectar las palabras antes de esta capa.
+            }
+          }
+          return [];
+        }
+
+        const groups = [];
+        let group = [];
+        for (const word of readWords()) {
+          const last = group.at(-1);
+          const length = group.reduce((total, entry) => total + entry.w.length + 1, word.w.length);
+          if (last && (word.s - last.e >= .26 || /[.!?¡¿:;,]$/.test(last.w)
+              || group.length >= 5 || length > 29 || safeColor(last) !== safeColor(word))) {
+            groups.push(group);
+            group = [];
+          }
+          group.push(word);
+        }
+        if (group.length) groups.push(group);
+
+        groups.forEach((line, i) => {
+          const el = document.createElement("div");
+          el.className = "pov-caption " + safeColor(line[0]);
+          el.textContent = line.map(word => word.w).join(" ");
+          if (el.textContent.length > 24) el.style.fontSize = "58px";
+          stage.append(el);
+          const start = line[0].s;
+          const end = Math.min(groups[i + 1]?.[0].s ?? Infinity, Math.max(start + .26, line.at(-1).e + .07));
+          timer.set(el, { opacity: 1 }, start);
+          timer.set(el, { opacity: 0 }, end);
+        });
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines.captions = timer;
+      })();
+    </script>
+  </div>
+</template>

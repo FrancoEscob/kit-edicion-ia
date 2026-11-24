@@ -39,6 +39,7 @@ Si no queda claro, preguntá una sola cosa: qué material tiene y dónde se va a
 
 ### Animado (sin material grabado)
 
+- **Historia animada en primera persona que termina en una elección**: usá `animacion-pov-narrativa` para guion, cámara, manos, sonido y tarjeta final. Si trae un video de referencia nuevo, medilo primero con `referencias`.
 - **Con un estilo de Lemo** (los 99 de `catalogo/lemo.md`): usá la skill `lemo-opuscar` con su motor nativo. Hace la película entera, con voz, música y subtítulos propios. Pasale el formato (para vertical: `--size 1080x1920`, solo con estilos marcados "sí" en vertical) y la duración.
 - **Con un estilo del kit o algo a medida**: HyperFrames directo (skills de `hyperframes`), o Remotion si la persona lo eligió.
 - Después, `revisar-export`.
