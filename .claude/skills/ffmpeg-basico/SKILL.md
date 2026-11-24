@@ -1,6 +1,6 @@
 ---
 name: ffmpeg-basico
-description: Arreglos rápidos de video y audio con ffmpeg, sin plan de edición — cortar un tramo, pasar a vertical o cuadrado, comprimir para WhatsApp o mail, sacar o cambiar el audio, unir videos, nivelar el volumen, quemar un .srt, sacar silencios simples, hacer un GIF, sacar cuadros o una hoja de cuadros, cambiar velocidad. Úsala cuando el pedido es una operación puntual sobre un archivo.
+description: Arreglos rápidos de video y audio con ffmpeg y yt-dlp, sin plan de edición — bajar un video de un link (YouTube, Instagram, TikTok, X), cortar un tramo, pasar a vertical o cuadrado, comprimir para WhatsApp o mail, sacar o cambiar el audio, unir videos, nivelar el volumen, quemar un .srt, sacar silencios simples, hacer un GIF, sacar cuadros o una hoja de cuadros, cambiar velocidad. Úsala cuando el pedido es una operación puntual sobre un archivo.
 ---
 
 # ffmpeg básico
@@ -13,6 +13,19 @@ Reglas:
 - Para cortes exactos, re-encodeá (`-c:v libx264`). `-c copy` es instantáneo, pero corta en el keyframe más cercano y se puede correr hasta 2 s.
 - Para entregar en redes: `-c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart`.
 - Al terminar, decí qué hiciste, el tamaño final y la duración, medidos con ffprobe.
+
+## Bajar un video de un link
+
+YouTube, Shorts, Instagram, TikTok, X, Vimeo y casi cualquier red (`yt-dlp`, ya instalado en el kit):
+```
+.venv/bin/yt-dlp -f "bv*[height<=1080]+ba/b" --merge-output-format mp4 -o "proyectos/<nombre>/%(title).60s.%(ext)s" "<link>"
+```
+(Windows: `.venv\Scripts\yt-dlp.exe`.)
+- **Solo un pedazo:** `--download-sections "*1:20-2:05"`.
+- **Para medir una referencia** alcanza con 720p (`height<=720`); **para usarlo como material**, 1080p o más.
+- **Si falla:** actualizalo (`uv pip install --python .venv -U "yt-dlp[default,curl-cffi]"`) y probá de nuevo. Si YouTube da 403, seguí https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide.
+- **Instagram, a veces X, y videos con restricción de edad** piden estar logueado. Preguntale a la persona antes: "Este video solo baja si uso tu sesión del navegador. ¿Te parece que lea las cookies de Chrome solo para esta descarga?". Solo con un sí claro, sumá `--cookies-from-browser chrome` (o `firefox`, `safari`, `edge`).
+- Bajá solo lo que la persona tiene derecho a usar: como referencia para aprender un formato, o material propio. No para resubir el video de otro.
 
 ## Cortar un tramo
 

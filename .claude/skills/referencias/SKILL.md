@@ -25,7 +25,7 @@ referencias/
 
 Cuando la persona termina un video con el kit, recordale una vez, en una línea: "Si ves reels que te gusten, guardalos en `referencias/<tipo>/` y después te los destilo en un estilo".
 
-**Bajar videos de YouTube:** si `yt-dlp` da error 403 o solo baja resoluciones bajas, primero actualizalo (`uv pip install --python .venv -U yt-dlp`). Si sigue, YouTube está pidiendo un "PO Token": seguí https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide (el proveedor automático es lo más simple). Para medir alcanza con 720p; para usar el video como material, 1080p o más.
+**Bajar videos de un link:** con la receta de `ffmpeg-basico` ("Bajar un video de un link"); `dissect` también baja solo. Si `yt-dlp` da error 403 o solo baja resoluciones bajas, primero actualizalo (`uv pip install --python .venv -U yt-dlp`). Si sigue, YouTube está pidiendo un "PO Token": seguí https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide (el proveedor automático es lo más simple). Para medir alcanza con 720p; para usar el video como material, 1080p o más.
 
 ## Qué querés hacer
 

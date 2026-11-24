@@ -37,7 +37,9 @@ uv pip install --python .venv torch torchaudio                                  
 Después, en todos los casos:
 ```
 uv pip install --python .venv -r .claude/skills/transcribir/requirements.txt -r .claude/skills/preparar-video/requirements.txt
+uv pip install --python .venv -U "yt-dlp[default,curl-cffi]"
 ```
+`yt-dlp` baja videos de un link (YouTube, Instagram, TikTok, X, Vimeo y más). Las redes cambian seguido: si una descarga falla, lo primero es actualizarlo con ese mismo comando.
 Para saber si hay NVIDIA: `nvidia-smi` responde. El entorno de uv no trae `pip`: siempre `uv pip install --python .venv …`.
 
 uv baja Python 3.12 si no está, así que no hace falta instalarlo aparte. Para correr scripts: `.venv/bin/python` (Windows: `.venv\Scripts\python.exe`). Si WhisperX falla al instalarse, seguí el camino alternativo que explica `transcribir/SKILL.md`.

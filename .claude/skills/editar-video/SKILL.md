@@ -17,7 +17,8 @@ Antes de empezar, si falta algo del kit (ffmpeg, `.venv/`, HyperFrames, Lemo), c
 | Algo largo (podcast, charla, entrevista, live) para sacar clips | **Clips**: skill `clipear-podcast`, que después sigue el camino Grabado por cada clip |
 | Gráficos, títulos, números o animación **encima** de un video | **Grabado** con capa de gráficos |
 | Un video **sin material grabado**: explicador, intro, película animada, lanzamiento | **Animado** |
-| Un arreglo rápido: cortar un tramo, comprimir, pasar a vertical, sacar el audio, unir | **Rápido**: skill `ffmpeg-basico`, sin plan |
+| Un arreglo rápido: bajar un video de un link, cortar un tramo, comprimir, pasar a vertical, sacar el audio, unir | **Rápido**: skill `ffmpeg-basico`, sin plan |
+| Un link en vez de un archivo (YouTube, Instagram, TikTok, X) | Bajalo primero con `ffmpeg-basico` ("Bajar un video de un link") y seguí con el camino que corresponda |
 | Un video de referencia: "quiero que se vea así", "¿cómo está hecho?", "rehacé este video", "armame un estilo con estas referencias" | **Referencias**: skill `referencias` |
 | "Mostrame estilos", "qué puedo hacer" | Abrí el catálogo (abajo) y mostrá 3 a 6 opciones que sirvan para su material |
 

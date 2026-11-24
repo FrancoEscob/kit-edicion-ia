@@ -69,7 +69,8 @@ def main():
         v = version(out)
         chk('.venv (Python 3.11 a 3.12)', v and (3, 11) <= v <= (3, 12), out.strip().split()[0] if out else '',
             'rehacer: uv venv --python 3.12 .venv')
-        for mod, nec in (('numpy', True), ('onnxruntime', True), ('cv2', True), ('whisperx', False), ('faster_whisper', True)):
+        for mod, nec in (('numpy', True), ('onnxruntime', True), ('cv2', True), ('whisperx', False), ('faster_whisper', True),
+                         ('yt_dlp', True)):
             rc, out = sh([VENV_PY, '-c', f'import {mod}'])
             chk(f'.venv: {mod}', rc == 0, '', 'uv pip install --python .venv -r .claude/skills/<skill>/requirements.txt',
                 necesario=nec)

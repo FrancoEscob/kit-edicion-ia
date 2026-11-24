@@ -28,6 +28,8 @@ Escribilo como se lo dirías a un editor. Dejá tus archivos en `proyectos/`, ar
 - "Usá la estética de acuarela de Lemo para los gráficos de este reel."
 
 ## Arreglos rápidos
+- "Bajame este reel: [link de Instagram o TikTok]."
+- "Bajá este video de YouTube y sacame los mejores 3 clips: [link]."
 - "Comprimí este video para mandarlo por WhatsApp."
 - "Cortá del minuto 2 al 3:30."
 - "Sacale el audio a este video y dámelo en mp3."
