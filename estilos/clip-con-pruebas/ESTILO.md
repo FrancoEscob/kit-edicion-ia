@@ -25,7 +25,7 @@ Destilado del criterio medido para clips hablados con pruebas visuales disparada
   - Ajuste automático para no exceder **840 px** de ancho (mínimo **56 px**).
 - **Posición (zona segura):** eje **x = 510** (rango **x = 90–930**, ancho máximo **840 px**), línea base de énfasis en **y = 1240**, borde inferior **≤ 1340**.
 - **Agrupación y movimiento:** máximo **3 palabras** o **16 caracteres**; corte en puntuación, pausas **≥ 260 ms** y en cada corte visual. Entrada tras pausa ≥ **140 ms** con subida **5 px** (soporte) / **12 px** (énfasis) en `min(220 ms, 60%)` (`power3.out`); reemplazo seco en palabras rápidas.
-- **Título de gancho (opcional):** **64 px**, 2 líneas (≤ 30 caracteres c/u), tope en **y = 290**, **oculto** siempre que haya una tarjeta de prueba arriba y retirado a los **3 s** si no hay tarjetas.
+- **Título de gancho (opcional):** **64 px**, va en el tercio inferior en lugar de los subtítulos (ver `criterio/subtitulos.md`), **oculto** siempre que haya una tarjeta de prueba arriba y retirado a los **3 s** si no hay tarjetas.
 
 ## Reglas de pruebas, b-roll, contadores y sonido (`montar-video`)
 

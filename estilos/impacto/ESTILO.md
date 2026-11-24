@@ -31,5 +31,5 @@ Estilo propio del kit para clips de alta energía en redes verticales.
 ## Qué va encima y cómo (`montar-video`)
 
 - **Gráficos:** grandes, directos y de alto contraste (números gigantes en `#FFD400`, capturas con borde limpio), siempre sobre **y ≤ 1040** y centrados en **x = 510**.
-- **Título de gancho:** si se usa, 2 líneas cortas en `Archivo Black` **58 px**, tope en **y = 290**, y se va antes de los **3 s**.
+- **Título de gancho:** si se usa, en `Archivo Black` **58 px**, va en el tercio inferior en lugar de los subtítulos (ver `criterio/subtitulos.md`) y se va antes de los **3 s**.
 - **Freno a excesos:** solo **una** palabra amarilla por grupo; nunca pintes la frase entera de amarillo.

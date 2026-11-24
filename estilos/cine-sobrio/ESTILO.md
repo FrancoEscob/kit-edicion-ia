@@ -36,4 +36,4 @@ Destilado del criterio medido para subtítulos cinematográficos contenidos sobr
 - **Palabra escénica opcional:** sobre un plano abierto sin cara en el centro puede colocarse una palabra suelta traslúcida al **60–62% de opacidad** (hasta ~260–300 px en 16:9, ~200 px en 9:16), fija hasta el corte del plano, sin adelantar la frase siguiente.
 - **No duplicar zooms:** si el plano de video ya tiene retroceso de cámara propio, no le agregues un segundo zoom encima.
 - **Tipografía única:** jamás mezcles dos fuentes distintas en el mismo clip.
-- **Título de gancho (si se usa):** misma fuente, **64 px**, tracking **−0,04 em**, máximo 2 líneas de 30 caracteres, tope en **y = 290**, oculto al entrar tarjetas y retirado a los ~3 s.
+- **Título de gancho (si se usa):** misma fuente, **64 px**, tracking **−0,04 em**, va en el tercio inferior en lugar de los subtítulos (ver `criterio/subtitulos.md`), oculto al entrar tarjetas y retirado a los ~3 s.

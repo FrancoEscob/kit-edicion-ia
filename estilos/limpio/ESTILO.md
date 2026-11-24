@@ -28,6 +28,6 @@ Estilo propio del kit, diseñado como base universal para cualquier video hablad
 
 ## Qué va encima y cómo (`montar-video`)
 
-- **Título de gancho (opcional):** misma fuente `Montserrat` 700, **60 px**, máximo 2 líneas de 30 caracteres, tope en **y = 290**, se retira a los **3 s** o al entrar una tarjeta.
+- **Título de gancho (opcional):** misma fuente `Montserrat` 700, **60 px**, va en el tercio inferior en lugar de los subtítulos (ver `criterio/subtitulos.md`), se retira a los **3 s** o al entrar una tarjeta.
 - **Gráficos:** sobrios, sin ruido visual, alineados en **x = 510** y arriba de **y = 1040**.
 - **Una sola pista de texto:** si entra una placa que repite el mensaje hablado, apagá los subtítulos durante ese tramo.
