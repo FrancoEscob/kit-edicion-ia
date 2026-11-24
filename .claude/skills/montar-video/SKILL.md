@@ -131,6 +131,14 @@ python3 .claude/skills/montar-video/scripts/generar_ducking.py CLIP/base-palabra
 ```
 Objetivo (`criterio/sonido.md`): voz a −14 LUFS, música ~10 dB abajo bajo habla (piso −6 dB en frases suaves), fades de 0,4 s. Si alguna vez usás `ffmpeg sidechaincompress`, agregá 3 s de relleno al final de ambas entradas y recortá después.
 
+## Mostrar el montaje en el estudio de HyperFrames
+
+Cuando la persona quiera ver o tocar el video por dentro ("abrime el estudio", "quiero ver las capas", "mostrame cómo está armado"):
+```
+npx hyperframes preview CLIP/montaje --port 3002
+```
+Queda corriendo en segundo plano y abre `http://localhost:3002/#project/montaje`. Pasale ese link. Ahí ve las piezas a la izquierda, el reproductor en el medio y la línea de tiempo con todas las capas abajo. Puede tocar un elemento del cuadro para editarlo, y los cambios que hagas en los archivos se recargan solos. Para cerrarlo: `npx hyperframes preview CLIP/montaje --stop`.
+
 ## 6. Controles obligatorios antes de renderizar
 
 ```bash

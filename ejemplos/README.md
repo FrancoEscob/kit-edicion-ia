@@ -34,6 +34,10 @@ Escribilo como se lo dirías a un editor. Dejá tus archivos en `proyectos/`, ar
 - "Cortá del minuto 2 al 3:30."
 - "Sacale el audio a este video y dámelo en mp3."
 
+## Ver cómo está armado
+- "Abrime el estudio de HyperFrames con mi último video."
+- "Mostrame las capas del reel que hicimos."
+
 ## Si algo no anda
 - "Arreglá el kit."
 - "¿Qué tengo instalado?"
