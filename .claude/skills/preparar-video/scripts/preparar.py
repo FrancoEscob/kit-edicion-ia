@@ -852,6 +852,396 @@ def _armar_trayectoria_eje(
     return exprs, suave, "suavizado"
 
 
+def _mediana3(arr: np.ndarray) -> np.ndarray:
+    """Filtro mediana de 3 muestras para descartar falsos positivos aislados de 1 cuadro."""
+    n = len(arr)
+    if n <= 2:
+        return arr.copy()
+    out = arr.copy()
+    for i in range(1, n - 1):
+        out[i] = float(np.median(arr[i - 1 : i + 2]))
+    return out
+
+
+def _evaluar_tripode_en_t(
+    t_abs: float,
+    x_ini: float,
+    y_ini: float,
+    eventos: list[dict[str, Any]],
+) -> tuple[float, float]:
+    """Evalúa la posición exacta (x, y) del trípode virtual en un instante absoluto."""
+    x, y = x_ini, y_ini
+    for ev in eventos:
+        t0 = float(ev["t_ini_abs"])
+        t1 = float(ev["t_fin_abs"])
+        if t_abs < t0:
+            break
+        if ev["tipo"] == "corte" or t1 <= t0 + 1e-4 or t_abs >= t1:
+            x = float(ev["to_x"])
+            y = float(ev["to_y"])
+        else:
+            u = max(0.0, min(1.0, (t_abs - t0) / (t1 - t0)))
+            ease = 0.5 * (1.0 - math.cos(math.pi * u))
+            x = float(ev["from_x"]) + (float(ev["to_x"]) - float(ev["from_x"])) * ease
+            y = float(ev["from_y"]) + (float(ev["to_y"]) - float(ev["from_y"])) * ease
+            break
+    return x, y
+
+
+def _construir_expresion_tripode_sub(
+    sub: SubSegmento,
+    x_ini: float,
+    y_ini: float,
+    eventos: list[dict[str, Any]],
+    span_x: int,
+    span_y: int,
+) -> tuple[str, str]:
+    """Genera expresiones ffmpeg exactas (fijo, corte o ease in-out cosenoidal) para un subsegmento."""
+    # Determinar eventos activos dentro de [sub.q_inicio, sub.q_fin]
+    evs_sub = [
+        ev for ev in eventos
+        if float(ev["t_fin_abs"]) > sub.q_inicio + 1e-4 and float(ev["t_ini_abs"]) < sub.q_fin - 1e-4
+    ]
+    x_start, y_start = _evaluar_tripode_en_t(sub.q_inicio, x_ini, y_ini, eventos)
+    if not evs_sub:
+        ix = int(round(max(0.0, min(float(span_x), x_start))))
+        iy = int(round(max(0.0, min(float(span_y), y_start))))
+        return str(ix), str(iy)
+
+    def _armar_eje(clave_from: str, clave_to: str, v_start: float, vmax: int) -> str:
+        # Verificar si realmente cambia en este subsegmento.
+        vals_check = [v_start] + [float(ev[clave_to]) for ev in evs_sub]
+        if max(vals_check) - min(vals_check) < 0.75:
+            return str(int(round(max(0.0, min(float(vmax), v_start)))))
+
+        # Construir de atrás hacia adelante: if(lt(t, t0), prev, if(lt(t, t1), ease, ...))
+        v_final = max(0.0, min(float(vmax), float(evs_sub[-1][clave_to])))
+        expr = f"{v_final:.2f}"
+        for idx in range(len(evs_sub) - 1, -1, -1):
+            ev = evs_sub[idx]
+            t0_loc = float(ev["t_ini_abs"]) - sub.q_inicio
+            t1_loc = float(ev["t_fin_abs"]) - sub.q_inicio
+            v0 = max(0.0, min(float(vmax), float(ev[clave_from])))
+            v1 = max(0.0, min(float(vmax), float(ev[clave_to])))
+
+            if ev["tipo"] == "corte" or t1_loc <= t0_loc + 1e-3:
+                tc = max(0.0, t0_loc)
+                if tc <= 1e-3:
+                    expr = f"{v1:.2f}"
+                else:
+                    expr = f"if(lt(t,{tc:.4f}),{v0:.2f},{expr})"
+            else:
+                dur = max(1e-3, t1_loc - t0_loc)
+                ease_expr = (
+                    f"({v0:.2f}+({v1 - v0:.4f})*0.5*(1-cos(3.14159265*(t-({t0_loc:.4f}))/{dur:.4f})))"
+                )
+                if t1_loc > 1e-3:
+                    expr = f"if(lt(t,{t1_loc:.4f}),{ease_expr},{expr})"
+                if t0_loc > 1e-3:
+                    expr = f"if(lt(t,{t0_loc:.4f}),{v0:.2f},{expr})"
+        return f"clip({expr},0,{vmax})"
+
+    return (
+        _armar_eje("from_x", "to_x", x_start, span_x),
+        _armar_eje("from_y", "to_y", y_start, span_y),
+    )
+
+
+def _recolectar_pausas_tramo(subs: list[SubSegmento]) -> list[dict[str, float]]:
+    """Lista pausas entre palabras y cortes de silencio dentro de los subsegmentos de un tramo."""
+    pausas: list[dict[str, float]] = []
+    # 1. Cortes de silencio ya existentes entre subsegmentos consecutivos del mismo tramo.
+    for k in range(len(subs) - 1):
+        pausas.append({
+            "t_ini": subs[k].q_fin,
+            "t_fin": subs[k + 1].q_inicio,
+            "t_mid": subs[k].q_fin,
+            "dur": max(0.30, subs[k + 1].q_inicio - subs[k].q_fin),
+            "es_corte_silencio": 1.0,
+        })
+    # 2. Huecos entre palabras consecutivas dentro de cada subsegmento.
+    for sub in subs:
+        pals = sub.palabras
+        for k in range(len(pals) - 1):
+            g_ini = float(pals[k]["e"])
+            g_fin = float(pals[k + 1]["s"])
+            dur = g_fin - g_ini
+            if dur >= 0.06:
+                pausas.append({
+                    "t_ini": g_ini,
+                    "t_fin": g_fin,
+                    "t_mid": 0.5 * (g_ini + g_fin),
+                    "dur": dur,
+                    "es_corte_silencio": 0.0,
+                })
+    pausas.sort(key=lambda p: p["t_mid"])
+    return pausas
+
+
+def _abs_a_tiempo_salida(t_abs: float, subs: list[SubSegmento]) -> float:
+    """Convierte un timestamp del video original al reloj de salida de base.mp4."""
+    for sub in subs:
+        if sub.q_inicio - 1e-4 <= t_abs <= sub.q_fin + 1e-4:
+            return sub.offset_salida + max(0.0, min(sub.q_fin - sub.q_inicio, t_abs - sub.q_inicio))
+    # Si cayó justo en un hueco recortado entre subsegmentos, pegar al borde del siguiente.
+    for k in range(len(subs) - 1):
+        if subs[k].q_fin <= t_abs <= subs[k + 1].q_inicio:
+            return subs[k + 1].offset_salida
+    if t_abs < subs[0].q_inicio:
+        return subs[0].offset_salida
+    ult = subs[-1]
+    return ult.offset_salida + (ult.q_fin - ult.q_inicio)
+
+
+def _planificar_tripode_tramo(
+    subs: list[SubSegmento],
+    arr_t: np.ndarray,
+    arr_nx_raw: np.ndarray,
+    arr_ey_raw: np.ndarray,
+    arr_fx1_raw: np.ndarray,
+    arr_fx2_raw: np.ndarray,
+    t_crop_w: int,
+    t_crop_h: int,
+    out_h: int,
+    span_x: int,
+    span_y: int,
+    usar_tercios: bool,
+    eje_y_activo: bool,
+) -> tuple[float, float, list[dict[str, Any]]]:
+    """Calcula el encuadre fijo de trípode virtual y los reencuadres (si los hay) de un tramo."""
+    arr_nx = _mediana3(arr_nx_raw)
+    arr_ey = _mediana3(arr_ey_raw)
+
+    target_y_ratio = (1.0 / 3.0) if usar_tercios else 0.35
+    y_min_ok = (560.0 / 1920.0) * out_h
+    y_max_ok = (720.0 / 1920.0) * out_h
+    tol_x_px = 0.12 * float(t_crop_w)
+    emerg_nariz_px = 0.30 * float(t_crop_w)
+    emerg_margen_px = 0.06 * float(t_crop_w)
+    min_mov_px = max(4.0, 0.025 * float(t_crop_w))
+    sostenido_s = 1.2
+    cooldown_s = 4.0
+    dur_suave_s = 0.5
+    dur_emerg_s = 0.35
+
+    def _objetivo_xy(nx_slice: np.ndarray, ey_slice: np.ndarray) -> tuple[float, float]:
+        tx = float(np.clip(float(np.median(nx_slice)) - 0.5 * t_crop_w, 0.0, float(span_x)))
+        if eje_y_activo and span_y > 1:
+            ty = float(np.clip(float(np.median(ey_slice)) - target_y_ratio * t_crop_h, 0.0, float(span_y)))
+        else:
+            ty = float((span_y) // 2) if span_y > 0 else 0.0
+        return tx, ty
+
+    def _fuera_zona_muerta(nx: float, ey: float, cx: float, cy: float) -> bool:
+        # Horizontal: nariz dentro de ±12% del ancho del recorte respecto del centro.
+        dx = nx - (cx + 0.5 * t_crop_w)
+        fuera_x = False
+        if abs(dx) > tol_x_px:
+            if dx < 0 and cx > 0.5:
+                fuera_x = True
+            elif dx > 0 and cx < span_x - 0.5:
+                fuera_x = True
+
+        # Vertical: ojos dentro de 560–720 px en 9:16 (escalado proporcionalmente en 4:5 y 1:1).
+        fuera_y = False
+        if eje_y_activo and span_y > 1:
+            eye_out_y = ((ey - cy) / float(t_crop_h)) * float(out_h)
+            if eye_out_y < y_min_ok and cy > 0.5:
+                fuera_y = True
+            elif eye_out_y > y_max_ok and cy < span_y - 0.5:
+                fuera_y = True
+        return fuera_x or fuera_y
+
+    def _en_emergencia(nx: float, fx1: float, fx2: float, cx: float) -> bool:
+        # Regla de emergencia: borde de la caja facial a < 6% del ancho o nariz a > ±30% del centro.
+        dx = nx - (cx + 0.5 * t_crop_w)
+        peligro_izq = ((fx1 - cx) < emerg_margen_px) or (dx < -emerg_nariz_px)
+        peligro_der = (((cx + t_crop_w) - fx2) < emerg_margen_px) or (dx > emerg_nariz_px)
+        if peligro_izq and cx > 0.5:
+            return True
+        if peligro_der and cx < span_x - 0.5:
+            return True
+        return False
+
+    def _tiene_excursion_sostenida(cx: float, cy: float) -> bool:
+        out_ini: float | None = None
+        em_streak = 0
+        for t_i, nx_i, ey_i, nx_r, fx1_r, fx2_r in zip(
+            arr_t, arr_nx, arr_ey, arr_nx_raw, arr_fx1_raw, arr_fx2_raw
+        ):
+            if _en_emergencia(float(nx_r), float(fx1_r), float(fx2_r), cx):
+                em_streak += 1
+                if em_streak >= 2:
+                    return True
+            else:
+                em_streak = 0
+
+            if _fuera_zona_muerta(float(nx_i), float(ey_i), cx, cy):
+                if out_ini is None:
+                    out_ini = float(t_i)
+                elif float(t_i) - out_ini >= sostenido_s:
+                    return True
+            else:
+                out_ini = None
+        return False
+
+    # 1. Probar encuadre 100% fijo con la mediana global del tramo.
+    med_x_all, med_y_all = _objetivo_xy(arr_nx, arr_ey)
+    if not _tiene_excursion_sostenida(med_x_all, med_y_all):
+        return round(med_x_all), round(med_y_all), []
+
+    # 2. Hay movimiento sostenido real: arrancar centrado en la ventana inicial del tramo.
+    t0_tramo = float(arr_t[0])
+    t_fin_tramo = float(arr_t[-1])
+    mask_ini = arr_t <= (t0_tramo + 3.5)
+    if int(np.sum(mask_ini)) < min(5, len(arr_t)):
+        mask_ini = np.zeros(len(arr_t), dtype=bool)
+        mask_ini[: min(5, len(arr_t))] = True
+    x_ini, y_ini = _objetivo_xy(arr_nx[mask_ini], arr_ey[mask_ini])
+    x_ini, y_ini = float(round(x_ini)), float(round(y_ini))
+
+    pausas = _recolectar_pausas_tramo(subs)
+    eventos: list[dict[str, Any]] = []
+    cur_x, cur_y = x_ini, y_ini
+    ultimo_reenc_t = -1e9
+    out_ini: float | None = None
+    em_streak = 0
+
+    i = 0
+    n = len(arr_t)
+    while i < n:
+        t_i = float(arr_t[i])
+        nx_i = float(arr_nx[i])
+        ey_i = float(arr_ey[i])
+
+        if _en_emergencia(float(arr_nx_raw[i]), float(arr_fx1_raw[i]), float(arr_fx2_raw[i]), cur_x):
+            em_streak += 1
+        else:
+            em_streak = 0
+        es_emergencia = em_streak >= 2
+
+        fuera_zm = _fuera_zona_muerta(nx_i, ey_i, cur_x, cur_y)
+        if not fuera_zm and not es_emergencia:
+            out_ini = None
+            i += 1
+            continue
+
+        if out_ini is None:
+            out_ini = t_i
+
+        if not es_emergencia and ((t_i - out_ini) < sostenido_s or (t_i - ultimo_reenc_t) < cooldown_s):
+            i += 1
+            continue
+
+        # Calcular nueva mediana en la zona asentada hacia adelante.
+        if es_emergencia:
+            # Mirar un paso hacia adelante para apuntar adonde se asienta la persona si sigue desplazándose.
+            mask_nuevo = (arr_t >= min(t_fin_tramo, t_i + 0.25)) & (arr_t <= min(t_fin_tramo, t_i + 2.8))
+            if int(np.sum(mask_nuevo)) < 3:
+                mask_nuevo = (arr_t >= t_i) & (arr_t <= min(t_fin_tramo, t_i + 2.8))
+        else:
+            mask_nuevo = (arr_t >= out_ini) & (arr_t <= min(t_fin_tramo, t_i + 3.0))
+        if int(np.sum(mask_nuevo)) < 3:
+            mask_nuevo = arr_t >= out_ini
+        new_x, new_y = _objetivo_xy(arr_nx[mask_nuevo], arr_ey[mask_nuevo])
+        new_x, new_y = float(round(new_x)), float(round(new_y))
+
+        if math.hypot(new_x - cur_x, new_y - cur_y) < min_mov_px:
+            out_ini = None
+            em_streak = 0
+            i += 1
+            continue
+
+        if es_emergencia:
+            # Emergencia: actuar ya (corte si cae en pausa >= 0.25 s cercana, si no suave 0.35 s).
+            win_lo = max(t0_tramo, t_i - 0.25)
+            win_hi = min(t_fin_tramo - 0.1, t_i + 0.35)
+            cands = [p for p in pausas if win_lo <= p["t_mid"] <= win_hi]
+            corte_cand = next((p for p in cands if p["dur"] >= 0.25 or p["es_corte_silencio"] > 0.5), None)
+            if corte_cand is not None:
+                tipo = "corte"
+                t_ev_ini = float(corte_cand["t_mid"])
+                t_ev_fin = t_ev_ini
+            else:
+                tipo = "suave"
+                t_ev_ini = max(t0_tramo, ultimo_reenc_t + 0.05, t_i - 0.15)
+                t_ev_fin = min(t_fin_tramo, t_ev_ini + dur_emerg_s)
+        else:
+            # Normal: preferir pausa entre palabras.
+            win_lo = max(ultimo_reenc_t + cooldown_s, out_ini)
+            win_hi = min(t_fin_tramo - 0.15, t_i + 1.2)
+            cands = [p for p in pausas if win_lo <= p["t_mid"] <= win_hi]
+
+            corte_cand = next((p for p in cands if p["dur"] >= 0.25 or p["es_corte_silencio"] > 0.5), None)
+            if corte_cand is not None:
+                tipo = "corte"
+                t_ev_ini = float(corte_cand["t_mid"])
+                t_ev_fin = t_ev_ini
+            else:
+                pausa_cand = next((p for p in cands if p["dur"] >= 0.06), None)
+                tipo = "suave"
+                t_centro = float(pausa_cand["t_mid"]) if pausa_cand is not None else t_i
+                t_ev_ini = max(win_lo, t_centro - 0.25 * dur_suave_s)
+                t_ev_fin = min(t_fin_tramo, t_ev_ini + dur_suave_s)
+                if t_ev_fin - t_ev_ini < 0.25:
+                    t_ev_ini = max(t0_tramo, t_ev_fin - dur_suave_s)
+
+        eventos.append({
+            "t_ini_abs": t_ev_ini,
+            "t_fin_abs": t_ev_fin,
+            "t_salida": round(_abs_a_tiempo_salida(t_ev_ini, subs), 2),
+            "tipo": tipo,
+            "emergencia": es_emergencia,
+            "from_x": cur_x,
+            "to_x": new_x,
+            "from_y": cur_y,
+            "to_y": new_y,
+        })
+        cur_x, cur_y = new_x, new_y
+        ultimo_reenc_t = t_ev_fin
+        out_ini = None
+        em_streak = 0
+
+        # Avanzar el índice hasta pasar el fin de la transición.
+        while i < n and float(arr_t[i]) <= t_ev_fin:
+            i += 1
+
+    return x_ini, y_ini, eventos
+
+
+def _muestrear_trayectoria_tramo(
+    subs: list[SubSegmento],
+    evaluador,
+    paso_s: float = 0.5,
+) -> tuple[list[float], list[float]]:
+    """Muestrea la posición (x, y) del recorte cada 0,5 s en el reloj de salida del tramo."""
+    dur_total = sum((s.q_fin - s.q_inicio) for s in subs)
+    t_local = 0.0
+    ts_loc: list[float] = []
+    while t_local <= dur_total + 1e-6:
+        ts_loc.append(min(t_local, dur_total))
+        t_local += paso_s
+    if not ts_loc:
+        ts_loc = [0.0]
+
+    traj_x: list[float] = []
+    traj_y: list[float] = []
+    for tl in ts_loc:
+        # Mapear tiempo local del tramo -> timestamp absoluto del origen.
+        acum = 0.0
+        t_abs = subs[-1].q_fin
+        for sub in subs:
+            d = sub.q_fin - sub.q_inicio
+            if tl <= acum + d + 1e-6:
+                t_abs = sub.q_inicio + max(0.0, min(d, tl - acum))
+                break
+            acum += d
+        vx, vy = evaluador(t_abs)
+        traj_x.append(round(float(vx), 1))
+        traj_y.append(round(float(vy), 1))
+    return traj_x, traj_y
+
+
 def calcular_recorte_caras(
     subsegmentos: list[SubSegmento],
     fuente: Path,
@@ -864,54 +1254,75 @@ def calcular_recorte_caras(
     eje_libre: str,
     seguir_cara: bool,
     encuadre: str,
+    movimiento: str,
     zoom_max: float,
     ruta_yunet: Path | None,
     advertencias: list[str],
     etapas_salteadas: list[str],
 ) -> dict[str, Any]:
-    """Calcula recorte por tramo con YuNet ONNX (ojos en tercio superior y nariz centrada en x)."""
+    """Calcula recorte por tramo con YuNet ONNX (trípode virtual por defecto o seguimiento suave)."""
     centro_x = (src_w - crop_w) // 2
     centro_y = (src_h - crop_h) // 2 if eje_libre != "y" else int(round((src_h - crop_h) * 0.35))
     usar_tercios = encuadre == "tercios"
     ojos_y_objetivo = round(out_h / 3.0, 1)
     tol_ojos_px = (40.0 / 1920.0) * out_h
 
-    def _aplicar_centro_todos() -> None:
-        for sub in subsegmentos:
-            sub.crop_w = crop_w
-            sub.crop_h = crop_h
-            sub.crop_x_expr = str(centro_x)
-            sub.crop_y_expr = str(centro_y)
+    # Agrupar subsegmentos por tramo original para mantener encuadre continuo dentro del mismo tramo.
+    por_tramo: dict[int, list[SubSegmento]] = {}
+    for sub in subsegmentos:
+        por_tramo.setdefault(sub.idx_tramo, []).append(sub)
+
+    def _aplicar_centro_todos(estrategia_label: str) -> list[dict[str, Any]]:
+        info_t: list[dict[str, Any]] = []
+        for idx_t, subs in por_tramo.items():
+            for sub in subs:
+                sub.crop_w = crop_w
+                sub.crop_h = crop_h
+                sub.crop_x_expr = str(centro_x)
+                sub.crop_y_expr = str(centro_y)
+            tx, ty = _muestrear_trayectoria_tramo(subs, lambda _t: (centro_x, centro_y))
+            info_t.append({
+                "tramo": idx_t,
+                "estrategia": estrategia_label,
+                "recorte_px": f"{crop_w}x{crop_h}",
+                "zoom": 1.0,
+                "reencuadres": [],
+                "trayectoria_x": tx,
+                "trayectoria_y": ty,
+                "desplazamiento_total_x_px": 0.0,
+                "desplazamiento_total_y_px": 0.0,
+            })
+        return info_t
 
     if eje_libre == "ninguno" and not usar_tercios:
-        _aplicar_centro_todos()
-        return {"modo": "sin_recorte", "estrategia": encuadre, "caras_detectadas_pct": None}
+        tramos_f = _aplicar_centro_todos("sin_recorte")
+        return {"modo": "sin_recorte", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     if not seguir_cara:
-        _aplicar_centro_todos()
-        return {"modo": "centrado_por_plan", "estrategia": encuadre, "caras_detectadas_pct": None}
+        tramos_f = _aplicar_centro_todos("centrado_por_plan")
+        return {"modo": "centrado_por_plan", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     if ruta_yunet is None:
-        _aplicar_centro_todos()
+        tramos_f = _aplicar_centro_todos("centrado_sin_modelo")
         etapas_salteadas.append("seguimiento_cara: falta modelo YuNet ONNX; se usó recorte centrado.")
-        return {"modo": "centrado_sin_modelo", "estrategia": encuadre, "caras_detectadas_pct": None}
+        return {"modo": "centrado_sin_modelo", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     try:
         import cv2
     except ImportError as exc:
-        _aplicar_centro_todos()
+        tramos_f = _aplicar_centro_todos("centrado_sin_opencv")
         msg = f"seguimiento_cara: OpenCV (cv2) no instalado ({exc}); se usó recorte centrado."
         advertencias.append(msg)
         etapas_salteadas.append(msg)
-        return {"modo": "centrado_sin_opencv", "estrategia": encuadre, "caras_detectadas_pct": None}
+        return {"modo": "centrado_sin_opencv", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     cap = cv2.VideoCapture(str(fuente))
     if not cap.isOpened():
-        _aplicar_centro_todos()
+        tramos_f = _aplicar_centro_todos("centrado_error_lectura")
         msg = "seguimiento_cara: OpenCV no pudo abrir el video fuente; se usó recorte centrado."
         advertencias.append(msg)
         etapas_salteadas.append(msg)
-        return {"modo": "centrado_error_lectura", "estrategia": encuadre, "caras_detectadas_pct": None}
+        return {"modo": "centrado_error_lectura", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     det_w = min(src_w, 640)
     escala_det = det_w / float(src_w)
@@ -927,16 +1338,11 @@ def calcular_recorte_caras(
         )
     except Exception as exc:
         cap.release()
-        _aplicar_centro_todos()
+        tramos_f = _aplicar_centro_todos("centrado_error_modelo")
         msg = f"seguimiento_cara: falló al cargar YuNet ONNX ({exc}); se usó recorte centrado."
         advertencias.append(msg)
         etapas_salteadas.append(msg)
-        return {"modo": "centrado_error_modelo", "estrategia": encuadre, "caras_detectadas_pct": None}
-
-    # Agrupar subsegmentos por tramo original para mantener encuadre continuo dentro del mismo tramo.
-    por_tramo: dict[int, list[SubSegmento]] = {}
-    for sub in subsegmentos:
-        por_tramo.setdefault(sub.idx_tramo, []).append(sub)
+        return {"modo": "centrado_error_modelo", "estrategia": encuadre, "movimiento": movimiento, "caras_detectadas_pct": None, "tramos": tramos_f}
 
     total_muestras = 0
     muestras_con_cara = 0
@@ -945,13 +1351,15 @@ def calcular_recorte_caras(
     todos_nariz_x_final: list[float] = []
     zooms_aplicados: list[float] = []
     algun_zoom_limitado = False
-    paso_muestra = 0.4  # ~2.5 fps
+    paso_muestra = 0.25  # 4 fps para medir excursiones > 1.2 s con precisión
 
     try:
         for idx_t, subs in por_tramo.items():
             tiempos_t: list[float] = []
             nariz_x_t: list[float] = []
             ojos_y_t: list[float] = []
+            face_x1_t: list[float] = []
+            face_x2_t: list[float] = []
             cara_previa: tuple[float, float] | None = None
             muestras_tramo = 0
             detecciones_tramo = 0
@@ -977,9 +1385,8 @@ def calcular_recorte_caras(
                     if faces is None or len(faces) == 0:
                         continue
 
-                    # Elegir cara principal (grande, confiable y cercana a la anterior del mismo tramo).
                     mejor_score = -1.0
-                    mejor_datos: tuple[float, float, float, float] | None = None
+                    mejor_datos: tuple[float, float, float, float, float, float] | None = None
                     sx = src_w / float(det_w)
                     sy = src_h / float(det_h)
                     for f in faces:
@@ -990,7 +1397,6 @@ def calcular_recorte_caras(
                         cx = fx + 0.5 * fbw
                         cy = fy + 0.45 * fbh
 
-                        # Landmarks de YuNet: ojos f[4..7], nariz f[8..9].
                         eye_rx, eye_ry = float(f[4]) * sx, float(f[5]) * sy
                         eye_lx, eye_ly = float(f[6]) * sx, float(f[7]) * sy
                         nose_x = float(f[8]) * sx
@@ -1010,16 +1416,18 @@ def calcular_recorte_caras(
                             score *= 1.0 / (1.0 + 2.5 * dist)
                         if score > mejor_score:
                             mejor_score = score
-                            mejor_datos = (cx, cy, nose_x, eye_y)
+                            mejor_datos = (cx, cy, nose_x, eye_y, fx, fx + fbw)
 
                     if mejor_datos is not None:
-                        cx, cy, nose_x, eye_y = mejor_datos
+                        cx, cy, nose_x, eye_y, fx1, fx2 = mejor_datos
                         detecciones_tramo += 1
                         muestras_con_cara += 1
                         cara_previa = (cx, cy)
                         tiempos_t.append(float(ts))
                         nariz_x_t.append(nose_x)
                         ojos_y_t.append(eye_y)
+                        face_x1_t.append(fx1)
+                        face_x2_t.append(fx2)
 
             if muestras_tramo == 0 or (detecciones_tramo / max(1, muestras_tramo)) < 0.15:
                 for sub in subs:
@@ -1027,10 +1435,17 @@ def calcular_recorte_caras(
                     sub.crop_h = crop_h
                     sub.crop_x_expr = str(centro_x)
                     sub.crop_y_expr = str(centro_y)
+                tx, ty = _muestrear_trayectoria_tramo(subs, lambda _t: (centro_x, centro_y))
                 tramos_info.append({
                     "tramo": idx_t,
                     "estrategia": "centrado_sin_cara",
+                    "recorte_px": f"{crop_w}x{crop_h}",
                     "zoom": 1.0,
+                    "reencuadres": [],
+                    "trayectoria_x": tx,
+                    "trayectoria_y": ty,
+                    "desplazamiento_total_x_px": 0.0,
+                    "desplazamiento_total_y_px": 0.0,
                     "detecciones": detecciones_tramo,
                     "muestras": muestras_tramo,
                 })
@@ -1039,6 +1454,8 @@ def calcular_recorte_caras(
             arr_t = np.array(tiempos_t, dtype=np.float64)
             arr_nx = np.array(nariz_x_t, dtype=np.float64)
             arr_ey = np.array(ojos_y_t, dtype=np.float64)
+            arr_fx1 = np.array(face_x1_t, dtype=np.float64)
+            arr_fx2 = np.array(face_x2_t, dtype=np.float64)
 
             if usar_tercios:
                 med_ey = float(np.median(arr_ey))
@@ -1058,43 +1475,84 @@ def calcular_recorte_caras(
             zooms_aplicados.append(zoom_t)
             span_x = max(0, src_w - t_crop_w)
             span_y = max(0, src_h - t_crop_h)
+            eje_y_activo = usar_tercios or eje_libre == "y"
 
-            arr_x = np.clip(arr_nx - 0.5 * t_crop_w, 0.0, float(span_x))
-            if usar_tercios:
-                arr_y = np.clip(arr_ey - (t_crop_h / 3.0), 0.0, float(span_y))
-            else:
-                arr_y = np.clip(arr_ey - 0.35 * t_crop_h, 0.0, float(span_y))
-
-            exprs_x, curva_x, modo_x = _armar_trayectoria_eje(
-                subs=subs,
-                arr_t=arr_t,
-                arr_v=arr_x,
-                span_max=span_x,
-                deadzone_px=max(16.0, 0.07 * t_crop_w),
-                sigma_s=0.85,
-                vel_max=max(25.0, 0.14 * t_crop_w),
-            )
-            if usar_tercios or eje_libre == "y":
-                exprs_y, curva_y, modo_y = _armar_trayectoria_eje(
+            if movimiento == "tripode":
+                x_ini, y_ini, eventos = _planificar_tripode_tramo(
                     subs=subs,
                     arr_t=arr_t,
-                    arr_v=arr_y,
-                    span_max=span_y,
-                    deadzone_px=max(8.0, 0.04 * t_crop_h),
-                    sigma_s=0.9,
-                    vel_max=max(18.0, 0.10 * t_crop_h),
+                    arr_nx_raw=arr_nx,
+                    arr_ey_raw=arr_ey,
+                    arr_fx1_raw=arr_fx1,
+                    arr_fx2_raw=arr_fx2,
+                    t_crop_w=t_crop_w,
+                    t_crop_h=t_crop_h,
+                    out_h=out_h,
+                    span_x=span_x,
+                    span_y=span_y,
+                    usar_tercios=usar_tercios,
+                    eje_y_activo=eje_y_activo,
+                )
+                for sub in subs:
+                    sub.crop_w = t_crop_w
+                    sub.crop_h = t_crop_h
+                    ex, ey = _construir_expresion_tripode_sub(sub, x_ini, y_ini, eventos, span_x, span_y)
+                    sub.crop_x_expr = ex
+                    sub.crop_y_expr = ey
+
+                eval_fn = lambda t_abs, _xi=x_ini, _yi=y_ini, _ev=eventos: _evaluar_tripode_en_t(t_abs, _xi, _yi, _ev)
+                curva_x = np.array([eval_fn(float(t))[0] for t in arr_t], dtype=np.float64)
+                curva_y = np.array([eval_fn(float(t))[1] for t in arr_t], dtype=np.float64)
+                reencuadres_out = [{"t": ev["t_salida"], "tipo": ev["tipo"]} for ev in eventos]
+                traj_x, traj_y = _muestrear_trayectoria_tramo(subs, eval_fn)
+                estrategia_tramo = (
+                    f"{'tercios' if usar_tercios else 'cara'}_tripode"
+                    + ("" if not eventos else f"_{len(eventos)}reenc")
                 )
             else:
-                cy_fijo = (src_h - t_crop_h) // 2
-                exprs_y = [str(cy_fijo) for _ in subs]
-                curva_y = np.full_like(arr_y, float(cy_fijo))
-                modo_y = "fijo"
+                arr_x = np.clip(arr_nx - 0.5 * t_crop_w, 0.0, float(span_x))
+                if usar_tercios:
+                    arr_y = np.clip(arr_ey - (t_crop_h / 3.0), 0.0, float(span_y))
+                else:
+                    arr_y = np.clip(arr_ey - 0.35 * t_crop_h, 0.0, float(span_y))
 
-            for sub, ex, ey in zip(subs, exprs_x, exprs_y):
-                sub.crop_w = t_crop_w
-                sub.crop_h = t_crop_h
-                sub.crop_x_expr = ex
-                sub.crop_y_expr = ey
+                exprs_x, curva_x, modo_x = _armar_trayectoria_eje(
+                    subs=subs,
+                    arr_t=arr_t,
+                    arr_v=arr_x,
+                    span_max=span_x,
+                    deadzone_px=max(16.0, 0.07 * t_crop_w),
+                    sigma_s=0.85,
+                    vel_max=max(25.0, 0.14 * t_crop_w),
+                )
+                if eje_y_activo:
+                    exprs_y, curva_y, _ = _armar_trayectoria_eje(
+                        subs=subs,
+                        arr_t=arr_t,
+                        arr_v=arr_y,
+                        span_max=span_y,
+                        deadzone_px=max(8.0, 0.04 * t_crop_h),
+                        sigma_s=0.9,
+                        vel_max=max(18.0, 0.10 * t_crop_h),
+                    )
+                else:
+                    cy_fijo = (src_h - t_crop_h) // 2
+                    exprs_y = [str(cy_fijo) for _ in subs]
+                    curva_y = np.full_like(arr_y, float(cy_fijo))
+
+                for sub, ex, ey in zip(subs, exprs_x, exprs_y):
+                    sub.crop_w = t_crop_w
+                    sub.crop_h = t_crop_h
+                    sub.crop_x_expr = ex
+                    sub.crop_y_expr = ey
+
+                eval_fn = lambda t_abs, _at=arr_t, _cx=curva_x, _cy=curva_y: (
+                    float(np.interp(t_abs, _at, _cx)),
+                    float(np.interp(t_abs, _at, _cy)),
+                )
+                reencuadres_out = []
+                traj_x, traj_y = _muestrear_trayectoria_tramo(subs, eval_fn)
+                estrategia_tramo = f"{'tercios' if usar_tercios else 'cara'}_{modo_x}"
 
             ojos_out = ((arr_ey - curva_y) / float(t_crop_h)) * float(out_h)
             nariz_out = ((arr_nx - curva_x) / float(t_crop_w)) * float(out_w)
@@ -1110,16 +1568,24 @@ def calcular_recorte_caras(
                     f"no alcanzó para llevar los ojos a y={ojos_y_objetivo:.0f}px; quedaron en y={ojos_y_tramo:.1f}px."
                 )
 
+            desp_x = round(float(np.sum(np.abs(np.diff(traj_x)))), 1) if len(traj_x) > 1 else 0.0
+            desp_y = round(float(np.sum(np.abs(np.diff(traj_y)))), 1) if len(traj_y) > 1 else 0.0
+
             tramos_info.append({
                 "tramo": idx_t,
-                "estrategia": f"tercios_{modo_x}" if usar_tercios else f"cara_{modo_x}",
+                "estrategia": estrategia_tramo,
                 "recorte_px": f"{t_crop_w}x{t_crop_h}",
                 "zoom": zoom_t,
                 "zoom_limitado": zoom_lim,
                 "ojos_y_final": ojos_y_tramo,
                 "nariz_x_final": nariz_x_tramo,
-                "rango_x_px": round(float(np.ptp(curva_x)), 1),
-                "rango_y_px": round(float(np.ptp(curva_y)), 1),
+                "rango_x_px": round(float(np.ptp(traj_x)), 1) if traj_x else 0.0,
+                "rango_y_px": round(float(np.ptp(traj_y)), 1) if traj_y else 0.0,
+                "desplazamiento_total_x_px": desp_x,
+                "desplazamiento_total_y_px": desp_y,
+                "reencuadres": reencuadres_out,
+                "trayectoria_x": traj_x,
+                "trayectoria_y": traj_y,
                 "detecciones": detecciones_tramo,
                 "muestras": muestras_tramo,
             })
@@ -1134,6 +1600,7 @@ def calcular_recorte_caras(
     return {
         "modo": "yunet_onnx",
         "estrategia": encuadre,
+        "movimiento": movimiento,
         "zoom_max_config": zoom_max,
         "zoom_aplicado": zoom_global,
         "zoom_limitado": algun_zoom_limitado,
@@ -1596,6 +2063,15 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    movimiento_raw = str(plan.get("movimiento", "tripode")).strip().lower()
+    movimiento = "tripode" if movimiento_raw == "trípode" else movimiento_raw
+    if movimiento not in ("tripode", "seguir"):
+        print(
+            f"[ERROR] 'movimiento' inválido: '{movimiento_raw}'. Elegí 'tripode' o 'seguir'.",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         zoom_max = float(plan.get("zoom_max", 1.35))
         if not math.isfinite(zoom_max) or zoom_max < 1.0:
@@ -1699,6 +2175,7 @@ def main(argv: list[str] | None = None) -> int:
             eje_libre=eje_libre,
             seguir_cara=seguir_cara,
             encuadre=encuadre,
+            movimiento=movimiento,
             zoom_max=zoom_max,
             ruta_yunet=ruta_yunet,
             advertencias=advertencias,

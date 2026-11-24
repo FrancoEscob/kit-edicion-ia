@@ -139,6 +139,7 @@ npx hyperframes check CLIP/montaje --at 0.5,2.0,6.5,12.0
 ```
 *(En 0.9.90 `check` reemplaza a `validate` + `inspect`, que siguen disponibles como alias.)*
 - **`lint`:** tiene que dar **0 errores**.
+- **Falso positivo conocido:** `check` puede marcar como "texto fuera de zona segura" un contenedor transparente que solo agrupa cosas. Si el texto visible está dentro de la zona (miralo en un cuadro), marcá el contenedor con `data-layout-ignore` y seguí.
 - **`check`:** verifica consola limpia, contraste WCAG AA, desbordes de layout y piso tipográfico (≥ 28 px en 1080×1920). Marcá desbordes de entrada/salida con `data-layout-allow-overflow` y decorativos con `data-layout-ignore`.
 
 Recién cuando pasan limpios:
