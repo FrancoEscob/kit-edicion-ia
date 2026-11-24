@@ -8,7 +8,7 @@ Instagram Reels y TikTok dibujan botones y textos encima del video. Todo texto t
 
 | Zona | Regla medida |
 |---|---|
-| Franja superior (**0–270 px**) | Usuario y audio de la plataforma. El borde superior del título de gancho arranca en **y = 290 px** |
+| Franja superior (**0–270 px**) | Usuario y audio de la plataforma. El gancho, si va arriba, en una línea entre **y = 230** y el pelo (ver más abajo) |
 | Columna derecha (**x > 940 px**, mitad inferior) | Botones de like, comentarios y compartir. Centrá subtítulos y gráficos en **x = 510** (no en 540) y mantenelos dentro de **x = 90–930** (ancho máximo **840 px**) |
 | Franja inferior (**últimos ~400 px**) | Usuario y descripción del post. Línea base principal de subtítulos en **y = 1240–1280**; tope preferente **y ≤ 1340** (hasta **1530** solo si hubo que bajarlos por una cara baja) |
 | Gráficos encima | Si van arriba del texto (en corte o tarjeta full): **y ≤ 1040**. Si van compactos debajo del texto en un hook con ojos en `y ≈ 640`: texto en **y = 1040–1220** y tarjeta en **y = 1240–1490** |
@@ -20,7 +20,7 @@ En **16:9 (1920×1080)**: los controles tapan los últimos ~120 px; poné los su
 - **Encuadre objetivo:** ojos cerca del tercio superior (**y ≈ 640 px**), cabeza dentro de `y ≈ 360–960 px`.
 - **Umbral del mentón:** si el mentón (percentil 85 de los cuadros) cae debajo de **y = 1010** en 1080×1920, hacé zoom-in desde abajo (tope **1,29×** en fuentes 4K, **1,15×** en HD) levantando el mentón sobre los subtítulos sin que la cabeza suba de **y = 460**.
 - **Plano muy cerrado:** si no hay margen para hacer zoom, apoyá los subtítulos sobre el pecho, justo debajo del mentón. Nunca tapen ojos ni boca, y jamás los achiques hasta volverlos ilegibles.
-- **Título de gancho:** si el título en `y = 290` baja por debajo de las cejas en más del **10%** de los cuadros, movelo debajo del mentón (si entra sobre los subtítulos) o achicalo (nunca debajo de **44 px**).
+- **Título de gancho:** con los ojos en el tercio superior, la cabeza ocupa más o menos de y≈360 a y≈960, así que un título de dos líneas en `y = 290` siempre la toca. Por defecto, el gancho va **en el tercio inferior, en lugar de los subtítulos durante sus ~3 s** (con la misma jerarquía de palabra clave). Arriba solo si entra en **una línea** entre `y = 230` y el borde superior del pelo (medilo en la hoja de cuadros), y nunca tapando pelo ni frente.
 - **Seguimiento suave:** muestrear caras cada **0,4 s**, seguir por continuidad (no por tamaño más grande; un salto mayor al **25%** del ancho es otra persona → mantener encuadre). Zona muerta del **6–7%** del ancho antes de mover, transición suave de **0,7 s**. Los tramos de una misma toma mantienen el mismo tamaño de plano (tolerancia **12%**) y los ojos a una altura estable.
 
 ## 3. Armado jerárquico (palabra clave primero + huecos)

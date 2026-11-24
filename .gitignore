@@ -22,3 +22,4 @@ node_modules/
 # Las referencias de cada uno
 referencias/*
 !referencias/README.md
+.claude/skills/slideshow/

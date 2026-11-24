@@ -11,6 +11,9 @@ Con la skill `transcribir`, sobre el archivo entero. Guardá todo en `proyectos/
 
 ## 2. Proponer
 
+**Si el video es corto (menos de ~3 minutos) o la persona pide "el mejor momento"**, no armes una lista: elegí vos el mejor tramo con estas mismas reglas, decí en una línea por qué y seguí. La lista de candidatos es para material largo.
+
+
 Leé `editar-video/criterio/seleccion-y-ganchos.md` y `cortes-y-finales.md`. Proponé **de 5 a 10 candidatos**, ordenados del mejor al peor. Para cada uno:
 
 - **gancho:** el título que va en pantalla desde el cuadro 0;

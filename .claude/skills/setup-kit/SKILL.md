@@ -28,8 +28,17 @@ Hace falta Node 22 o más nuevo y ffmpeg 7 o más nuevo, con los filtros `loudno
 
 ```
 uv venv --python 3.12 .venv
+```
+**Sin placa NVIDIA** (todas las Mac y la mayoría de las notebooks), instalá primero la versión liviana de torch, así no baja los ~2 GB de soporte para GPU:
+```
+uv pip install --python .venv torch torchaudio --index-url https://download.pytorch.org/whl/cpu      (Windows y Linux)
+uv pip install --python .venv torch torchaudio                                                       (Mac)
+```
+Después, en todos los casos:
+```
 uv pip install --python .venv -r .claude/skills/transcribir/requirements.txt -r .claude/skills/preparar-video/requirements.txt
 ```
+Para saber si hay NVIDIA: `nvidia-smi` responde. El entorno de uv no trae `pip`: siempre `uv pip install --python .venv …`.
 
 uv baja Python 3.12 si no está, así que no hace falta instalarlo aparte. Para correr scripts: `.venv/bin/python` (Windows: `.venv\Scripts\python.exe`). Si WhisperX falla al instalarse, seguí el camino alternativo que explica `transcribir/SKILL.md`.
 
@@ -40,12 +49,19 @@ Bajá a `.externas/modelos/` los tres archivos de `externas.json` → `modelos` 
 ## 4. HyperFrames
 
 ```
-npm install
-npx -y skills add heygen-com/hyperframes -a claude-code -y --copy -s hyperframes -s hyperframes-cli -s hyperframes-registry -s media-use -s slideshow -s remotion-to-hyperframes
+npm ci                       (usa package-lock.json: siempre la misma versión)
+git clone --filter=blob:none https://github.com/heygen-com/hyperframes.git .externas/hyperframes
+git -C .externas/hyperframes checkout <commit de externas.json → hyperframes>
+for s in hyperframes hyperframes-cli hyperframes-registry media-use slideshow remotion-to-hyperframes; do cp -r .externas/hyperframes/skills/$s .claude/skills/; done
 npx hyperframes doctor
 ```
 
-`npm install` deja HyperFrames 0.9.90 en el kit, así `npx hyperframes` usa siempre esa versión. **No instales `style-sampling` ni `reverse-any-video`**: son del plan pago. Si `hyperframes doctor` pide Chrome, instalalo como indica.
+Así las skills de HyperFrames quedan en la misma versión que su motor. **No copies `style-sampling` ni `reverse-any-video`**: son del plan pago. Si `hyperframes doctor` pide Chrome, instalalo como indica.
+
+**Mensajes que se pueden ignorar** (decíselo a la persona si los ve):
+- `hyperframes doctor` marca ✗ en voz (TTS) y música y termina con "Some checks failed": son piezas opcionales que el kit no usa.
+- `npm` avisa que bloqueó un script de instalación de esbuild: no hace falta.
+- Al transcribir, un error largo de `torchcodec` sobre ffmpeg: es inofensivo; la transcripción usa otro camino.
 
 ## 5. Lemo (99 estilos)
 
@@ -79,7 +95,7 @@ cp -r .externas/<nombre>/<skill> .claude/skills/<nombre>
 ```
 (`dissect`: skill en `plugins/dissect/skills/dissect`; `remake`: skill en `skills/remake`.)
 
-- **dissect** mide videos de referencia. En Linux y Windows necesita **tesseract** para leer el texto en pantalla (Mac usa Apple Vision): `winget install --id UB-Mannheim.TesseractOCR -e` o el gestor de Linux. Revisalo con `python3 .claude/skills/dissect/scripts/doctor.py`. La primera vez que mide, baja unos 600 MB de paquetes y un modelo de voz: avisá que es una espera única.
+- **dissect** mide videos de referencia. En Linux y Windows necesita **tesseract** para leer el texto en pantalla (Mac usa Apple Vision): `winget install --id UB-Mannheim.TesseractOCR -e` o el gestor de Linux. Revisalo con `python3 .claude/skills/dissect/scripts/doctor.py`. La primera vez que mide, baja alrededor de 1,2 GB (paquetes y un modelo de voz): avisá que es una espera única.
 - **remake** reconstruye un video entero como proyecto de HyperFrames. Usa solo comandos gratis de HyperFrames, ffmpeg y python3. Su paso 6 (rehacerlo con una marca) pide créditos de Avocado: nunca lo uses sin que la persona lo pida y apruebe el costo.
 
 ## 7. Remotion (solo si lo piden)
@@ -92,8 +108,9 @@ Avisá: es gratis para personas y equipos de hasta 3; una empresa más grande pa
 ## 8. Prueba final
 
 1. `doctor.py` sin ✗.
-2. Un video de prueba de 5 s: generá uno con ffmpeg (`testsrc2` + un tono), transcribilo, armá una composición de HyperFrames de 5 s con un título encima y renderizala. Si todo anda, borrá la prueba.
-3. Decile a la persona, en 3 o 4 líneas, qué quedó instalado y qué puede pedir, con 3 ejemplos de `ejemplos/README.md`.
+2. Un video de prueba de 5 s en `proyectos/prueba-setup/`: generá uno con ffmpeg (`testsrc2` + un tono), transcribilo, armá una composición de HyperFrames de 5 s con un título encima y renderizala. Si todo anda, borrá esa carpeta.
+3. Avisá cuánto ocupa el kit (`du -sh .`): con modelos y entornos son varios GB.
+4. Decile a la persona, en 3 o 4 líneas, qué quedó instalado y qué puede pedir, con 3 ejemplos de `ejemplos/README.md`, y cómo volver a abrir el kit (ver `CLAUDE.md`).
 
 ## Actualizar
 

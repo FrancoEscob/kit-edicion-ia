@@ -9,6 +9,10 @@ Recibís `base.mp4` + `base-palabras.json` (salida de `preparar-video`) y un est
 
 Antes de diseñar subtítulos, gráficos o sonido, respetá `.claude/skills/editar-video/criterio/` (`composicion.md`, `subtitulos.md`, `graficos-y-broll.md` y `sonido.md`). Para sintaxis de HyperFrames consultá las skills `hyperframes` y `hyperframes-cli`.
 
+**Todos los comandos se corren desde la raíz del kit.** En los ejemplos, `CLIP` es la carpeta de salida de `preparar-video` (por ejemplo `proyectos/charla/clip-1`), y el montaje va en `CLIP/montaje/`.
+
+**Cuadros por segundo:** renderizá a los fps de `base.mp4` (`ffprobe -v error -select_streams v -show_entries stream=r_frame_rate -of csv=p=0 CLIP/base.mp4`). Si la fuente es 23,976 o 25, no la pases a 30: el movimiento queda a saltitos.
+
 ## 0. Antes de armar escenas (solo para reels producidos)
 
 Si la persona solo pidió "poneme subtítulos", salteá al paso 1. Si quiere un reel producido con escenas y gráficos a medida, hacé estos dos pasos cortos primero:
@@ -16,24 +20,26 @@ Si la persona solo pidió "poneme subtítulos", salteá al paso 1. Si quiere un 
 ### a) `planificador.html` (entre `preparar-video` y el armado)
 Generá el planificador local autocontenido (abre directo en el navegador, sin servidor ni recomendaciones de IA):
 ```bash
-python3 .claude/skills/montar-video/scripts/generar_planificador.py proyectos/<nombre>/base-palabras.json \
-  --video base.mp4 --informe proyectos/<nombre>/informe.json --titulo "Mi reel" \
-  --out proyectos/<nombre>/planificador.html
+python3 .claude/skills/montar-video/scripts/generar_planificador.py CLIP/base-palabras.json \
+  --video base.mp4 --informe CLIP/informe.json --titulo "Mi reel" \
+  --out CLIP/planificador.html
 ```
 Trae el guion línea por línea (`L01`, `L02`…), reproductor que salta a cada línea al hacer clic, selector de paleta (desde `informe.json` → `paletas` si existe) y de par tipográfico OFL, tipo de escena (`A-roll`, `Gráfico encima`, `B-roll`, `Pantalla completa`, `Lemo`), nota libre y caja para pegar o arrastrar una captura de referencia. La persona toca **Guardar plan** → descarga `plan-escenas.json`, y vos montás siguiendo ese archivo.
 
 ### b) Checkpoint de subtítulos (antes de construir las escenas)
 Armá primero solo **Capa 1 (`base.mp4`) + tercio inferior opcional + Capa 4 (`subtitulos.html`)**, renderizá un borrador rápido y sacá una hoja de **6–12 cuadros** sobre palabras activas para que la persona apruebe tipografía, tamaño, contraste y posición antes de invertir tiempo en escenas:
 ```bash
-npx hyperframes render montaje --fps 15 --quality draft --output preview-subtitulos.mp4
-python3 .claude/skills/montar-video/scripts/hoja_subtitulos.py preview-subtitulos.mp4 montaje/base-palabras.json \
-  --cuadros 9 --cols 3 --out hoja-subtitulos.jpg
+npx hyperframes render CLIP/montaje --fps 15 --quality draft --output CLIP/preview-subtitulos.mp4
+python3 .claude/skills/montar-video/scripts/hoja_subtitulos.py CLIP/preview-subtitulos.mp4 CLIP/montaje/base-palabras.json \
+  --cuadros 9 --cols 3 --out CLIP/hoja-subtitulos.jpg
 ```
 Mostrale `hoja-subtitulos.jpg`. Recién cuando aprueba, sumás las capas 2, 3 y 5.
 
 ## 1. Las 5 capas (de abajo hacia arriba)
 
-Partí de `plantilla/` (copiala a `<salida>/montaje/` junto con `base.mp4` y `base-palabras.json`). Cada capa tiene un `z-index` fijo y sub-composiciones en `compositions/` para pasar `lint` sin avisos.
+Partí de `plantilla/` (copiala a `CLIP/montaje/` junto con `base.mp4` y `base-palabras.json`). Si corregís palabras mal transcritas (nombres, marcas), corregilas en `CLIP/montaje/base-palabras.json`.
+
+**Con un estilo del kit:** reemplazá la capa de subtítulos de la plantilla por el `subtitulos.html` del estilo, montado como dice `estilos/README.md` (su id es `captions`). Si el estilo trae su propio oscurecido del tercio inferior (como `editorial`), **borrá el `#tercio-inferior` de la plantilla** para no oscurecer dos veces. El gancho y cualquier texto que tenga que leerse van en una capa **por encima** de los subtítulos, porque el oscurecido del estilo tapa lo que está debajo y `check` lo marca como texto tapado. Cada capa tiene un `z-index` fijo y sub-composiciones en `compositions/` para pasar `lint` sin avisos.
 
 **Encuadre base en 9:16 (`1080×1920`):** ojos del hablante en `y ≈ 640`, subtítulos sobre el tercio inferior (`y ≈ 1280`), zona segura centrada en **`x = 510`** (`left: 90px; width: 840px`) y nada legible debajo de `y ≈ 1340–1530`.
 
@@ -120,7 +126,7 @@ python3 .claude/skills/montar-video/scripts/audicionar_musica.py proyectos/<nomb
 ```
 Con la pista elegida copiada a `montaje/`, generá el ducking (`data-automation`, sin `data-volume` aparte porque se multiplican):
 ```bash
-python3 .claude/skills/montar-video/scripts/generar_ducking.py proyectos/<nombre>/base-palabras.json \
+python3 .claude/skills/montar-video/scripts/generar_ducking.py CLIP/base-palabras.json \
   --volumen-base 0.35 --volumen-voz 0.14 --ataque 0.15 --release 0.40 --html-attr
 ```
 Objetivo (`criterio/sonido.md`): voz a −14 LUFS, música ~10 dB abajo bajo habla (piso −6 dB en frases suaves), fades de 0,4 s. Si alguna vez usás `ffmpeg sidechaincompress`, agregá 3 s de relleno al final de ambas entradas y recortá después.
@@ -128,8 +134,8 @@ Objetivo (`criterio/sonido.md`): voz a −14 LUFS, música ~10 dB abajo bajo hab
 ## 6. Controles obligatorios antes de renderizar
 
 ```bash
-npx hyperframes lint montaje
-npx hyperframes check montaje --at 0.5,2.0,6.5,12.0
+npx hyperframes lint CLIP/montaje
+npx hyperframes check CLIP/montaje --at 0.5,2.0,6.5,12.0
 ```
 *(En 0.9.90 `check` reemplaza a `validate` + `inspect`, que siguen disponibles como alias.)*
 - **`lint`:** tiene que dar **0 errores**.
@@ -137,9 +143,9 @@ npx hyperframes check montaje --at 0.5,2.0,6.5,12.0
 
 Recién cuando pasan limpios:
 ```bash
-npx hyperframes render montaje --fps 30 --quality standard --output final.mp4
+npx hyperframes render CLIP/montaje --fps <fps de base.mp4> --quality high --output CLIP/final.mp4
 ```
-Después pasale `final.mp4` a `revisar-export`.
+Después pasale `CLIP/final.mp4` a `revisar-export`, con `--palabras CLIP/montaje/base-palabras.json` (la copia del montaje, que tiene las correcciones de palabras).
 
 ## 7. Variante Remotion (solo si la persona lo pide)
 

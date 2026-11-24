@@ -7,15 +7,15 @@ description: Revisa un video terminado midiéndolo, porque Claude no ve ni oye e
 
 ```
 .venv/bin/python .claude/skills/revisar-export/scripts/revisar.py proyectos/x/clip-1/final.mp4 \
-  --palabras proyectos/x/clip-1/base-palabras.json --formato 9:16
+  --palabras proyectos/x/clip-1/montaje/base-palabras.json --formato 9:16
 ```
-(Windows: `.venv\Scripts\python.exe`.) `--palabras` son las palabras que usaron los subtítulos, en el reloj del video final. Sin `--palabras`, no se mide el desfase.
+(Windows: `.venv\Scripts\python.exe`.) `--palabras` son las palabras que usaron los subtítulos, en el reloj del video final: si corregiste palabras en el montaje, pasá `CLIP/montaje/base-palabras.json`, no la de `preparar-video`. Sin `--palabras`, no se mide el desfase.
 
 Escribe `revision.md` y `<nombre>-hoja.jpg` junto al video. Sale con 1 si hay alguna falla.
 
 ## Después del script
 
-1. **Abrí la hoja de cuadros y mirala entera.** El script no ve: caras tapadas por texto, texto fuera de la zona segura (abajo y a la derecha en Reels y TikTok), gráficos que no caen donde deben, cortes que saltan, subtítulos con errores de ortografía o nombres mal escritos. Revisá la composición de `editar-video/criterio/composicion.md`: ojos cerca del tercio superior, nada tapando la cabeza, texto apoyado sobre el tercio inferior. Para medir los ojos: `npx hyperframes measure face final.mp4 --samples 12`.
+1. **Abrí la hoja de cuadros y mirala entera.** El script no ve: caras tapadas por texto, texto fuera de la zona segura (abajo y a la derecha en Reels y TikTok), gráficos que no caen donde deben, cortes que saltan, subtítulos con errores de ortografía o nombres mal escritos. Revisá la composición de `editar-video/criterio/composicion.md`: ojos cerca del tercio superior, nada tapando la cabeza, texto apoyado sobre el tercio inferior. Para la cara: `npx hyperframes measure face final.mp4 --samples 12` da la caja de la cara (los ojos caen más o menos al 40% de su alto desde arriba); la altura exacta de los ojos la deja `preparar-video` en `informe.json` → `encuadre.ojos_y_final`.
 2. Si hay dudas en un momento puntual, sacá ese cuadro solo: `ffmpeg -ss T -i final.mp4 -frames:v 1 cuadro.jpg`.
 3. Revisá contra `editar-video/criterio/revision.md`.
 4. **Una sola pasada de arreglos:** corregí la causa (el plan, el estilo o la composición), no el síntoma, volvé a renderizar y volvé a correr el script. Si después de esa pasada sigue algo mal, entregá igual y decilo.

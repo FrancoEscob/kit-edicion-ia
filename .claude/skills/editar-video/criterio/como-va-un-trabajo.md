@@ -10,7 +10,7 @@ Ritmo de trabajo para entregar rápido, validar lo barato antes del render caro,
 
 ## 2. Checkpoint de hoja de subtítulos (en ediciones producidas)
 
-Para pedidos simples ("poneme subtítulos limpios a este clip") pasá directo a v1. En ediciones con múltiples escenas, gráficos o tipografía editorial de dos fuentes, meté un **checkpoint barato antes de armar las escenas**:
+Para pedidos simples ("poneme subtítulos a este clip", aunque sea con el estilo `editorial`) pasá directo a v1. En ediciones **producidas** (varias escenas o gráficos a medida), o si la persona pide ver los subtítulos antes, meté un **checkpoint barato antes de armar las escenas**:
 
 - Renderizá primero **solo los subtítulos** y sacá una **hoja de subtítulos** (`6 a 12` cuadros clave sobre `base.mp4`) para que la persona confirme en 30 segundos tipografías, jerarquía de palabras clave, paleta y posición.
 - Aprobada esa hoja, recién ahí invertí el tiempo en construir gráficos, b-roll y escenas de pantalla completa.

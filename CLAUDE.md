@@ -2,6 +2,10 @@
 
 Esta carpeta es un kit para editar video con Claude Code. La persona que lo usa puede no saber programar: hablale claro, en español, sin jerga, y hacé vos todo lo técnico.
 
+## Volver a abrir el kit
+
+Abrí Claude Code **dentro de esta carpeta**: en la terminal, `cd ~/kit-edicion-ia` y después `claude` (en Windows, `cd %USERPROFILE%\kit-edicion-ia`); en la app de escritorio o el editor, abrí la carpeta `kit-edicion-ia`. Así Claude carga las skills del kit.
+
 ## Reglas
 
 - **Cualquier pedido de video empieza por la skill `editar-video`.** Ella decide el camino, el motor y el estilo, y llama a las demás. No le pidas a la persona que nombre skills, motores ni comandos.

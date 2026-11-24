@@ -53,3 +53,8 @@ Para evitar cortar letras finales ni dejar fugas de la frase siguiente:
 - Bajo narración, sostené cada plano **≥ 1 s** y cortá en límites de frase. El corte sub-segundo es solo para ráfagas de montaje o la apertura.
 - En cortes de salto dentro de una misma toma, mantené la cara al mismo tamaño.
 - **Revisá cada empalme:** re-transcribí el audio final y mirá ~1 s a cada lado de cada unión. Una palabra duplicada, una muletilla oculta ("¿viste?", "bueno", "entonces") o una palabra faltante en los bordes es un fallo de corte.
+
+
+## Si el video no está en español
+
+Las mismas reglas valen en cualquier idioma. En inglés, no terminar antes de: *and, but, so, because, or, like, that, which, if, then*. El gancho, los subtítulos y los textos en pantalla van **en el idioma del video**, salvo que la persona pida otro.

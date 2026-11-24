@@ -1,6 +1,6 @@
 ---
 name: preparar-video
-description: Corta un video por índices de palabras según un plan.json, saca silencios internos largos con Silero VAD ONNX (con ritmo configurable), limpia y normaliza la voz a -14 LUFS (pico <= -1 dBTP), reencuadra a 9:16, 1:1, 4:5 o 16:9 ubicando ojos en el tercio superior con YuNet ONNX, y extrae 3 paletas candidatas del A-roll. Usala después de transcribir y elegir tramos, antes de montar en HyperFrames.
+description: Corta un video por índices de palabras según un plan.json, saca silencios internos largos con Silero VAD ONNX (con ritmo configurable), limpia y normaliza la voz a -14 LUFS (pico <= -1,5 dBTP), reencuadra a 9:16, 1:1, 4:5 o 16:9 ubicando ojos en el tercio superior con YuNet ONNX, y extrae 3 paletas candidatas del A-roll. Usala después de transcribir y elegir tramos, antes de montar en HyperFrames.
 ---
 
 # Preparar video base
@@ -54,7 +54,7 @@ Desde la raíz del repo:
 
 ## Qué sale (en `salida`)
 
-1. `base.mp4`: video reencuadrado, sin silencios largos, voz con paso alto (80 Hz), reducción de ruido (`arnndn` o `afftdn`) y `loudnorm` de dos pasadas a −14 LUFS con pico real ≤ −1 dBTP, y audio/video del mismo largo.
+1. `base.mp4`: video reencuadrado, sin silencios largos, voz con paso alto (80 Hz), reducción de ruido (`arnndn` o `afftdn`) y `loudnorm` de dos pasadas a −14 LUFS con pico real ≤ −1,5 dBTP, y audio/video del mismo largo.
 2. `base-palabras.json`: las palabras que quedaron con sus tiempos exactos en el reloj de `base.mp4`.
 3. `informe.json`: resolución, duraciones de video y audio, Δ A/V en ms, LUFS y pico real medidos, método de ruido, silencios cortados (`ritmo`, `aire_objetivo_ms`), encuadre (`ojos_y_objetivo`, `ojos_y_final`, `nariz_x_final`, `zoom_aplicado`, `zoom_limitado`), **`paletas`** (3 paletas candidatas de 4 colores hex extraídas del A-roll con k-means: `acento_claro`, `acento_oscuro`, `blanco_tenido`, `negro_tenido` para ofrecer en `montar-video`) y cualquier etapa salteada o advertencia.
 
@@ -71,9 +71,9 @@ Si falta un modelo y no hay conexión, la etapa se saltea sin romper el proceso 
 
 - **Faltan librerías en `.venv/`:** instalá con:
   ```bash
-  .venv/bin/pip install -r .claude/skills/preparar-video/requirements.txt
+  uv pip install --python .venv -r .claude/skills/preparar-video/requirements.txt
   ```
-  (en Windows: `.venv\Scripts\pip.exe install -r .claude\skills\preparar-video\requirements.txt`).
+  (igual en Windows: `uv` encuentra el `.venv`).
 - **Falta `ffmpeg` / `ffprobe`:** `brew install ffmpeg` (Mac), `winget install Gyan.FFmpeg` (Windows) o `sudo apt install ffmpeg` (Linux).
 - **Índice fuera de rango en `tramos`:** revisá `palabras.json` y asegurate de que `[inicio, fin]` existan y `inicio <= fin`.
 - **Si `arnndn` no viene en ese `ffmpeg`:** el script cae solo a `afftdn` y lo anota en `informe.json`.

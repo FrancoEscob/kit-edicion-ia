@@ -7,6 +7,7 @@ Un conjunto de skills para que Claude Code edite video por vos: sacar clips de u
 1. Abrí Claude Code (terminal, app de escritorio o editor).
 2. Pegá el prompt de [`prompts/setup.md`](prompts/setup.md).
 3. Cuando diga que está listo, pedile cosas como las de [`ejemplos/README.md`](ejemplos/README.md).
+4. La próxima vez, abrí Claude Code **dentro de la carpeta `kit-edicion-ia`** (en la terminal: `cd ~/kit-edicion-ia` y `claude`).
 
 ## Tu estilo, a partir de tus referencias
 

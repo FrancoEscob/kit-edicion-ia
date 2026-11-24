@@ -94,6 +94,12 @@ def main():
         fallas.append('no tiene imagen')
     if not au:
         avisos.append('no tiene audio')
+    rc, out, _ = run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type,bit_rate', '-of', 'json', v])
+    tasas = {s['codec_type']: int(s['bit_rate']) // 1000 for s in json.loads(out or '{}').get('streams', []) if s.get('bit_rate')}
+    if tasas.get('video') and tasas['video'] < 8000:
+        avisos.append(f"la imagen va a {tasas['video']} kb/s: para que la red no la degrade conviene 10.000 a 16.000 (renderizá con --quality high)")
+    if tasas.get('audio') and tasas['audio'] < 190:
+        avisos.append(f"el audio va a {tasas['audio']} kb/s (conviene 256)")
     rc, out, _ = run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type,duration', '-of', 'json', v])
     largos = {s['codec_type']: float(s['duration']) for s in json.loads(out or '{}').get('streams', []) if s.get('duration')}
     if 'video' in largos and 'audio' in largos and abs(largos['video'] - largos['audio']) > 0.1:
@@ -105,13 +111,17 @@ def main():
         if i is None:
             fallas.append('el audio está en silencio')
         else:
-            linea = f'volumen integrado {i:.1f} LUFS, pico {tp:.1f} dBFS'
+            linea = f'volumen integrado {i:.1f} LUFS, pico real {tp:.1f} dBTP'
             if not -16 <= i <= -12:
-                avisos.append(linea + ' (para redes conviene −14 ± 2)')
+                fallas.append(linea + ' (para redes: −14 ± 0,7)')
+            elif not -14.7 <= i <= -13.3:
+                avisos.append(linea + ' (para redes: −14 ± 0,7)')
             else:
                 ok.append(linea)
-            if tp is not None and tp > -0.5:
-                fallas.append(f'el pico llega a {tp:.1f} dBFS: puede saturar al subirlo a una red')
+            if tp is not None and tp > -1.0:
+                fallas.append(f'el pico real llega a {tp:.1f} dBTP: puede saturar al subirlo a una red (tope −1,5)')
+            elif tp is not None and tp > -1.5:
+                avisos.append(f'el pico real llega a {tp:.1f} dBTP (para clips conviene ≤ −1,5)')
 
     # Negro, congelado y silencio
     negros = tramos(detect(v, 'blackdetect=d=0.25:pix_th=0.10', 'video'), 'black_start:', 'black_end:')
@@ -166,6 +176,8 @@ def main():
                     linea = f'desfase subtítulos-voz: mediana {med * 1000:+.0f} ms, peor {peor * 1000:+.0f} ms'
                     if abs(med) > 0.12 or abs(peor) > 0.35:
                         fallas.append(linea + ' (los subtítulos no caen con la voz)')
+                    elif abs(med) > 0.08 or abs(peor) > 0.15:
+                        avisos.append(linea + ' (el criterio pide ±150 ms)')
                     else:
                         ok.append(linea)
             else:

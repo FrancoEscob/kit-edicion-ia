@@ -56,16 +56,16 @@ Cuando leas `texto.txt` para limpiar el guion y armar `tramos` en `plan.json`, *
 - **No está `.venv/` o faltan librerías:** creá `.venv` con Python 3.10–3.12 (evitá 3.13/3.14 por compatibilidad de `torch`/`whisperx`) e instalá:
   - Sin GPU (CPU, más liviano):
     ```bash
-    .venv/bin/pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch torchaudio
-    .venv/bin/pip install -r .claude/skills/transcribir/requirements.txt
+    uv pip install --python .venv --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple torch torchaudio
+    uv pip install --python .venv -r .claude/skills/transcribir/requirements.txt
     ```
   - Con GPU NVIDIA (CUDA):
     ```bash
-    .venv/bin/pip install -r .claude/skills/transcribir/requirements.txt
+    uv pip install --python .venv -r .claude/skills/transcribir/requirements.txt
     ```
 - **WhisperX no se puede instalar en ese equipo:** instalá solo el motor alternativo:
   ```bash
-  .venv/bin/pip install faster-whisper
+  uv pip install --python .venv faster-whisper
   ```
   El script detecta que falta WhisperX, corre `faster-whisper` con `word_timestamps=True` y avisa en `stderr` e `info.json` que los tiempos son menos precisos (pueden correrse hasta ~0,9 s).
 - **Falta `ffmpeg` / `ffprobe`:** instalalo con `brew install ffmpeg` (Mac), `winget install Gyan.FFmpeg` (Windows) o `sudo apt install ffmpeg` (Linux) y reintentá.

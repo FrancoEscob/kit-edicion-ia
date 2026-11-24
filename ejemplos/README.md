@@ -1,6 +1,6 @@
 # Qué le podés pedir
 
-Escribilo como se lo dirías a un editor. Poné tus archivos en `proyectos/` (o arrastralos al chat) y decí cuál es.
+Escribilo como se lo dirías a un editor. Dejá tus archivos en `proyectos/`, arrastralos al chat o decí dónde están: Claude trabaja en una carpeta `proyectos/<nombre>/` y **nunca toca el original**.
 
 ## Clips de algo largo
 - "Tengo un podcast de 40 minutos en proyectos/charla.mp4. Sacame los 3 mejores momentos para Reels."

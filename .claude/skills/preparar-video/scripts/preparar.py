@@ -1728,9 +1728,9 @@ def main(argv: list[str] | None = None) -> int:
             filtro_ruido=filtro_ruido,
             solo_audio=True,
         )
-        # Apuntamos TP=-1.5 en loudnorm para compensar el leve overshoot de AAC (+0.1 a +0.3 dBTP)
-        # y garantizar que el pico real medido de base.mp4 quede <= -1.0 dBTP.
-        tp_objetivo_filtro = -1.5
+        # Apuntamos TP=-2.0 en loudnorm para compensar el overshoot de AAC (+0.1 a +0.5 dBTP)
+        # y que el pico real medido de base.mp4 quede <= -1.5 dBTP (criterio/sonido.md).
+        tp_objetivo_filtro = -2.0
         fg_p1 = fg_p1_base + f";\n[aclean]loudnorm=I=-14:TP={tp_objetivo_filtro}:LRA=11:print_format=json[anull]"
         script_p1 = tmpdir / "fg_pass1.txt"
 

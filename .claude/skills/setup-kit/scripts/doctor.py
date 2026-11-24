@@ -89,7 +89,7 @@ def main():
     chk(f'hyperframes {quiere}', hv == quiere, hv or 'no está', 'npm install (en la raíz del kit)')
     for s in HF_SKILLS:
         chk(f'skill {s}', os.path.exists(os.path.join(RAIZ, '.claude', 'skills', s, 'SKILL.md')), '',
-            'npx -y skills add heygen-com/hyperframes -a claude-code -y --copy -s hyperframes -s hyperframes-cli -s hyperframes-registry -s media-use -s slideshow -s remotion-to-hyperframes')
+            'ver paso 4 de setup-kit/SKILL.md (copiar desde .externas/hyperframes/skills/)')
 
     # Lemo
     lib = os.path.join(RAIZ, '.externas', 'lemo-opuscar')
@@ -128,7 +128,8 @@ def main():
             'Windows: winget install --id UB-Mannheim.TesseractOCR -e; Linux: el gestor del sistema (tesseract-ocr)')
 
     # Remotion: opcional
-    chk('remotion (opcional)', any(n.startswith('remotion') for n in os.listdir(os.path.join(RAIZ, '.claude', 'skills'))),
+    chk('remotion (opcional)', any(n.startswith('remotion') and n != 'remotion-to-hyperframes'
+                                   for n in os.listdir(os.path.join(RAIZ, '.claude', 'skills'))),
         'solo si la persona lo pide', 'npx -y skills add remotion-dev/skills -a claude-code -y --copy', necesario=False)
 
     faltan = [r for r in res if r['necesario'] and not r['ok']]
