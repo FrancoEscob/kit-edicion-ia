@@ -1,0 +1,5 @@
+# Transcripción con alineación palabra por palabra (WhisperX = faster-whisper + wav2vec2)
+# Requiere Python 3.10–3.12 (3.13/3.14 pueden no tener wheels de torch/whisperx en todos los sistemas).
+# Si whisperx falla al instalar en un sistema puntual, instalar solo: faster-whisper>=1.1.0
+whisperx>=3.1.1
+faster-whisper>=1.1.0

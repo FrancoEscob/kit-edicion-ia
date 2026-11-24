@@ -1,0 +1,349 @@
+<template id="captions-template">
+  <div data-composition-id="captions" data-width="1080" data-height="1920">
+    <div id="ed-fondo-blur" class="ed-fondo-blur"></div>
+    <div id="ed-fondo-oscuro" class="ed-fondo-oscuro"></div>
+    <div id="sub-stage"></div>
+    <style>
+      [data-composition-id="captions"] {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        background: transparent;
+        font-family: "Inter", sans-serif;
+      }
+      .ed-fondo-blur {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        mask-image: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0) 60%,
+          rgba(0, 0, 0, 0.75) 72%,
+          rgba(0, 0, 0, 1) 86%
+        );
+        -webkit-mask-image: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0) 60%,
+          rgba(0, 0, 0, 0.75) 72%,
+          rgba(0, 0, 0, 1) 86%
+        );
+      }
+      .ed-fondo-oscuro {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0) 62%,
+          rgba(0, 0, 0, 0.35) 75%,
+          rgba(0, 0, 0, 0.65) 100%
+        );
+      }
+      #sub-stage {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .sub-group {
+        position: absolute;
+        left: 90px;
+        width: 840px;
+        top: 1040px;
+        height: 290px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 2px;
+        opacity: 0;
+        overflow: visible;
+      }
+      .sub-group.hook-tarjeta {
+        top: 990px;
+        height: 230px;
+      }
+      .sub-row {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        column-gap: 16px;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      .sub-word {
+        display: inline-block;
+        color: #f6f5f0;
+        text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        white-space: nowrap;
+      }
+      .sub-word.conector {
+        font-family: "Inter", sans-serif;
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        line-height: 1.12;
+      }
+      .sub-word.fuerte {
+        font-family: "Inter", sans-serif;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        line-height: 1.04;
+      }
+      .sub-word.realce {
+        font-family: "EB Garamond", serif;
+        font-style: italic;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        line-height: 0.96;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true });
+
+        var CONECTORES = {
+          // Español
+          el: 1, la: 1, los: 1, las: 1, un: 1, una: 1, unos: 1, unas: 1,
+          de: 1, del: 1, al: 1, a: 1, en: 1, con: 1, por: 1, para: 1,
+          sin: 1, sobre: 1, entre: 1, y: 1, e: 1, o: 1, u: 1, ni: 1,
+          que: 1, pero: 1, sino: 1, como: 1, si: 1, no: 1, me: 1, te: 1,
+          se: 1, nos: 1, les: 1, lo: 1, le: 1, mi: 1, tu: 1, su: 1,
+          es: 1, son: 1, era: 1, fue: 1, ser: 1, hay: 1, muy: 1, ya: 1,
+          yo: 1, vos: 1, eso: 1, esto: 1, esa: 1, este: 1, esta: 1,
+          // Inglés (para clips bilingües o de prueba)
+          the: 1, an: 1, of: 1, to: 1, in: 1, on: 1, at: 1, for: 1,
+          with: 1, by: 1, from: 1, as: 1, is: 1, are: 1, was: 1, be: 1,
+          it: 1, its: 1, this: 1, that: 1, and: 1, or: 1, but: 1, so: 1,
+          just: 1, i: 1, my: 1, me: 1, you: 1, your: 1, we: 1, our: 1,
+          now: 1, ill: 1, like: 1,
+        };
+
+        function leerJson(rutas) {
+          for (var i = 0; i < rutas.length; i++) {
+            try {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", rutas[i], false);
+              xhr.send(null);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                return JSON.parse(xhr.responseText);
+              }
+            } catch (e) {}
+          }
+          return null;
+        }
+
+        function luminanciaHex(hex) {
+          if (typeof hex !== "string") return 0;
+          var m = hex.trim().match(/^#([0-9a-f]{6})$/i);
+          if (!m) return 0;
+          var v = parseInt(m[1], 16);
+          var r = ((v >> 16) & 255) / 255;
+          var g = ((v >> 8) & 255) / 255;
+          var b = (v & 255) / 255;
+          return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        }
+
+        function extraerPaletaDeInforme(inf, idx) {
+          if (!inf || !inf.paletas) return {};
+          var p = inf.paletas;
+          var elegido = null;
+          if (Array.isArray(p) && p.length) {
+            var pos = typeof idx === "number" && idx >= 0 && idx < p.length ? idx : 0;
+            elegido = p[pos];
+          } else if (typeof p === "object") {
+            elegido = p;
+          }
+          if (!elegido) return {};
+          if (typeof elegido === "string") return { acento: elegido };
+          return {
+            acento: elegido.acento_claro || elegido.acento || elegido.accent || null,
+            texto: elegido.blanco_tenido || elegido.blanco || null,
+          };
+        }
+
+        var cfg = window.EDITORIAL_CONFIG || {};
+        var paletaManual = window.PALETA_EDITORIAL || {};
+        var informe = leerJson(["informe.json", "../informe.json"]);
+        var paletaInf = extraerPaletaDeInforme(informe, cfg.paletaIdx);
+        var colorTexto = paletaManual.texto || paletaInf.texto || "#F6F5F0";
+        var colorAcento = paletaManual.acento || paletaInf.acento || "#E8D8A8";
+        if (luminanciaHex(colorAcento) < 0.38) colorAcento = "#E8D8A8";
+
+        var mostrarFondo = cfg.fondoInferior !== false;
+        var modoHookTarjeta = Boolean(cfg.modoHookTarjeta);
+        if (!mostrarFondo) {
+          var elBlur = document.getElementById("ed-fondo-blur");
+          var elOsc = document.getElementById("ed-fondo-oscuro");
+          if (elBlur) elBlur.style.display = "none";
+          if (elOsc) elOsc.style.display = "none";
+        }
+
+        var realcesSet = {};
+        if (Array.isArray(window.REALCES)) {
+          window.REALCES.forEach(function (idx) { realcesSet[idx] = true; });
+        }
+        var acentosSet = {};
+        if (Array.isArray(window.ACENTOS)) {
+          window.ACENTOS.forEach(function (idx) { acentosSet[idx] = true; });
+        }
+
+        var palabras = Array.isArray(window.BASE_PALABRAS)
+          ? window.BASE_PALABRAS
+          : (leerJson(["base-palabras.json", "../base-palabras.json"]) || []);
+
+        function limpiar(w) {
+          return w.toLowerCase().replace(/[^a-záéíóúñü0-9$%]/gi, "");
+        }
+
+        function esConector(w) {
+          var c = limpiar(w);
+          return Boolean(CONECTORES[c]) || c.length <= 2;
+        }
+
+        function elegirRealce(grupo) {
+          var marcados = [];
+          for (var i = 0; i < grupo.length; i++) {
+            var p = grupo[i];
+            if (p.realce || realcesSet[p.i]) marcados.push(i);
+          }
+          if (marcados.length) return marcados;
+          for (var n = 0; n < grupo.length; n++) {
+            if (/[0-9$€%]/.test(grupo[n].w)) return [n];
+          }
+          var mejor = -1;
+          var mejorLargo = 0;
+          for (var j = 0; j < grupo.length; j++) {
+            var c = limpiar(grupo[j].w);
+            if (!CONECTORES[c] && c.length > mejorLargo) {
+              mejorLargo = c.length;
+              mejor = j;
+            }
+          }
+          return [mejor >= 0 ? mejor : grupo.length - 1];
+        }
+
+        function estimarAnchoFila(items) {
+          var total = 0;
+          for (var i = 0; i < items.length; i++) {
+            var factor = items[i].rol === "realce" ? 0.48 : (items[i].rol === "fuerte" ? 0.56 : 0.50);
+            total += items[i].w.w.length * items[i].tam * factor;
+            if (i > 0) total += 16;
+          }
+          return total;
+        }
+
+        var stage = document.getElementById("sub-stage");
+        var grupos = [];
+        var actual = [];
+
+        for (var i = 0; i < palabras.length; i++) {
+          var p = palabras[i];
+          var prev = actual.length ? actual[actual.length - 1] : null;
+          var pausa = prev ? p.s - prev.e : 0;
+          var finFrase = prev && /[.!?,;:]$/.test(prev.w);
+          var cambioBloque = prev && p.bloque !== undefined && prev.bloque !== p.bloque;
+          var largoActual = actual.map(function (x) { return x.w; }).join(" ").length;
+          if (actual.length && (cambioBloque || actual.length >= 5 || pausa >= 0.28 || finFrase || largoActual + 1 + p.w.length > 30)) {
+            grupos.push(actual);
+            actual = [];
+          }
+          actual.push(p);
+        }
+        if (actual.length) grupos.push(actual);
+
+        grupos.forEach(function (g, gi) {
+          var idxRealces = elegirRealce(g);
+          var realceMap = {};
+          idxRealces.forEach(function (idx) { realceMap[idx] = true; });
+          var primerRealce = idxRealces[0];
+
+          var enriquecidas = g.map(function (w, wi) {
+            var rol = "fuerte";
+            var tam = 82;
+            if (realceMap[wi]) {
+              rol = "realce";
+              tam = 114;
+            } else if (esConector(w.w)) {
+              rol = "conector";
+              tam = 52;
+            }
+            var usaAcento = Boolean(w.acento || acentosSet[w.i]);
+            return { w: w, wi: wi, rol: rol, tam: tam, usaAcento: usaAcento };
+          });
+
+          // Armado jerárquico por huecos: 1 o 2 filas equilibradas alrededor de la palabra clave
+          var filas = [];
+          if (enriquecidas.length <= 2) {
+            filas.push(enriquecidas);
+          } else {
+            var corte = Math.ceil(enriquecidas.length / 2);
+            if (primerRealce === enriquecidas.length - 1 && enriquecidas.length >= 3) {
+              // Palabra clave al final: arrastrar el conector inmediato a la fila inferior (ej. "like kings")
+              corte = esConector(enriquecidas[primerRealce - 1].w.w) ? primerRealce - 1 : primerRealce;
+              if (corte <= 0) corte = 1;
+            } else if (primerRealce === 0 && enriquecidas.length >= 3) {
+              corte = enriquecidas.length >= 4 ? 2 : 1;
+            } else if (primerRealce === enriquecidas.length - 2 && enriquecidas.length >= 4) {
+              corte = primerRealce;
+            }
+            filas.push(enriquecidas.slice(0, corte));
+            filas.push(enriquecidas.slice(corte));
+          }
+
+          var gEl = document.createElement("div");
+          gEl.className = modoHookTarjeta ? "sub-group hook-tarjeta" : "sub-group";
+          gEl.id = "ed-g-" + gi;
+
+          var spansAnim = [];
+          filas.forEach(function (fila, fi) {
+            var rowEl = document.createElement("div");
+            rowEl.className = "sub-row";
+            var anchoEst = estimarAnchoFila(fila);
+            var factorEscala = anchoEst > 790 ? Math.max(0.68, 790 / anchoEst) : 1;
+
+            fila.forEach(function (item, wi) {
+              var sp = document.createElement("span");
+              sp.className = "sub-word " + item.rol;
+              sp.id = "ed-w-" + gi + "-" + fi + "-" + wi;
+              var tamFinal = Math.max(48, Math.round(item.tam * factorEscala));
+              sp.style.fontSize = tamFinal + "px";
+              sp.style.color = item.usaAcento ? colorAcento : colorTexto;
+              sp.textContent = item.w.w;
+              rowEl.appendChild(sp);
+              spansAnim.push({ el: sp, s: item.w.s, e: item.w.e });
+            });
+            gEl.appendChild(rowEl);
+          });
+
+          stage.appendChild(gEl);
+
+          var inicio = g[0].s;
+          var sig = grupos[gi + 1];
+          var finBase = Math.max(g[g.length - 1].e + 0.45, inicio + 0.26);
+          var fin = sig ? Math.min(finBase, Math.max(inicio + 0.14, sig[0].s - 0.01)) : finBase;
+
+          tl.set(gEl, { opacity: 1 }, inicio);
+          spansAnim.forEach(function (w) {
+            var dur = Math.max(0.16, Math.min(0.26, (w.e - w.s) * 0.85));
+            tl.fromTo(
+              w.el,
+              { opacity: 0, y: 12, scale: 0.94, filter: "blur(8px)" },
+              { opacity: 1, y: 0, scale: 1, filter: "blur(0px)", duration: dur, ease: "power3.out" },
+              w.s
+            );
+          });
+          tl.set(gEl, { opacity: 0 }, fin);
+        });
+
+        tl.seek(0);
+        window.__timelines["captions"] = tl;
+      })();
+    </script>
+  </div>
+</template>

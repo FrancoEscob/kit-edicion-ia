@@ -1,0 +1,230 @@
+<template id="captions-template">
+  <div data-composition-id="captions" data-width="1080" data-height="1920">
+    <div id="pullback-layer">
+      <div id="sub-stage"></div>
+    </div>
+    <style>
+      [data-composition-id="captions"] {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        background: transparent;
+        font-family: "Inter", sans-serif;
+      }
+      #pullback-layer {
+        position: absolute;
+        inset: 0;
+        transform-origin: 510px 1200px;
+        overflow: visible;
+        pointer-events: none;
+      }
+      #sub-stage {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+      }
+      .sub-group {
+        position: absolute;
+        left: 90px;
+        width: 840px;
+        top: 1020px;
+        height: 290px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 4px;
+        opacity: 0;
+        overflow: visible;
+      }
+      .sub-row {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        column-gap: 14px;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      .sub-word {
+        display: inline-block;
+        color: #ffffff;
+        letter-spacing: -0.05em;
+        line-height: 1.02;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+        opacity: 0;
+        white-space: nowrap;
+      }
+      .sub-word.soporte { font-weight: 700; }
+      .sub-word.enfasis { font-weight: 800; }
+      .sub-word.simple { font-weight: 700; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true });
+
+        var VACIAS = {
+          el: 1, la: 1, los: 1, las: 1, un: 1, una: 1, unos: 1, unas: 1,
+          de: 1, del: 1, al: 1, a: 1, en: 1, con: 1, por: 1, para: 1,
+          sin: 1, sobre: 1, entre: 1, y: 1, e: 1, o: 1, u: 1, ni: 1,
+          que: 1, pero: 1, sino: 1, como: 1, si: 1, no: 1, me: 1, te: 1,
+          se: 1, nos: 1, les: 1, lo: 1, le: 1, mi: 1, tu: 1, su: 1,
+          es: 1, son: 1, era: 1, fue: 1, ser: 1, hay: 1, muy: 1, ya: 1,
+          yo: 1, vos: 1, eso: 1, esto: 1, esa: 1, este: 1, esta: 1,
+        };
+
+        function cargarPalabras() {
+          if (Array.isArray(window.BASE_PALABRAS)) return window.BASE_PALABRAS;
+          var rutas = ["base-palabras.json", "../base-palabras.json"];
+          for (var i = 0; i < rutas.length; i++) {
+            try {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", rutas[i], false);
+              xhr.send(null);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                var parsed = JSON.parse(xhr.responseText);
+                if (Array.isArray(parsed)) return parsed;
+              }
+            } catch (e) {}
+          }
+          return [];
+        }
+
+        function limpiar(w) {
+          return w.toLowerCase().replace(/[^a-záéíóúñü0-9$%]/gi, "");
+        }
+
+        function elegirEnfasis(grupo) {
+          for (var i = 0; i < grupo.length; i++) {
+            if (/[0-9$€%]/.test(grupo[i].w)) return i;
+          }
+          var mejor = -1;
+          var mejorLargo = 0;
+          for (var j = 0; j < grupo.length; j++) {
+            var c = limpiar(grupo[j].w);
+            if (!VACIAS[c] && c.length > mejorLargo) {
+              mejorLargo = c.length;
+              mejor = j;
+            }
+          }
+          return mejor;
+        }
+
+        function ajustarFila(texto, base, min, peso) {
+          if (window.__hyperframes && typeof window.__hyperframes.fitTextFontSize === "function") {
+            var res = window.__hyperframes.fitTextFontSize(texto, {
+              fontFamily: "Inter",
+              fontWeight: peso,
+              baseFontSize: base,
+              minFontSize: min,
+              maxWidth: 820,
+              step: 2,
+            });
+            if (res && res.fontSize) return Math.min(base, Math.max(min, res.fontSize));
+          }
+          var estimado = texto.length * base * 0.56;
+          if (estimado <= 820) return base;
+          return Math.max(min, Math.floor((base * 820) / estimado));
+        }
+
+        var palabras = cargarPalabras();
+        var stage = document.getElementById("sub-stage");
+        var pullback = document.getElementById("pullback-layer");
+        var grupos = [];
+        var actual = [];
+
+        for (var i = 0; i < palabras.length; i++) {
+          var p = palabras[i];
+          var prev = actual.length ? actual[actual.length - 1] : null;
+          var pausa = prev ? p.s - prev.e : 0;
+          var finFrase = prev && /[.!?,;:]$/.test(prev.w);
+          var largoActual = actual.map(function (x) { return x.w; }).join(" ").length;
+          if (actual.length && (actual.length >= 3 || pausa >= 0.26 || finFrase || largoActual + 1 + p.w.length > 16)) {
+            grupos.push(actual);
+            actual = [];
+          }
+          actual.push(p);
+        }
+        if (actual.length) grupos.push(actual);
+
+        if (palabras.length) {
+          var durTotal = Math.max(1.0, palabras[palabras.length - 1].e + 0.45);
+          tl.fromTo(
+            pullback,
+            { scale: 1.07 },
+            { scale: 1.0, duration: durTotal, ease: "power2.out" },
+            0
+          );
+        }
+
+        grupos.forEach(function (g, gi) {
+          var idx = elegirEnfasis(g);
+          var gEl = document.createElement("div");
+          gEl.className = "sub-group";
+          gEl.id = "cine-g-" + gi;
+
+          var filas = [];
+          if (idx < 0) {
+            filas.push({ palabras: g, tipo: "simple", base: 100, peso: 700, subida: 12 });
+          } else {
+            var antes = g.slice(0, idx);
+            var centro = [g[idx]];
+            var despues = g.slice(idx + 1);
+            if (antes.length) filas.push({ palabras: antes, tipo: "soporte", base: 66, peso: 700, subida: 5 });
+            filas.push({ palabras: centro, tipo: "enfasis", base: 136, peso: 800, subida: 12 });
+            if (despues.length) filas.push({ palabras: despues, tipo: "soporte", base: 66, peso: 700, subida: 5 });
+          }
+
+          var prevGrupo = grupos[gi - 1];
+          var pausaAntesGrupo = prevGrupo ? g[0].s - prevGrupo[prevGrupo.length - 1].e : 1.0;
+          var items = [];
+
+          filas.forEach(function (f, fi) {
+            var rowEl = document.createElement("div");
+            rowEl.className = "sub-row";
+            var texto = f.palabras.map(function (w) { return w.w; }).join(" ");
+            var tam = ajustarFila(texto, f.base, 56, f.peso);
+            f.palabras.forEach(function (w, wi) {
+              var sp = document.createElement("span");
+              sp.className = "sub-word " + f.tipo;
+              sp.id = "cine-w-" + gi + "-" + fi + "-" + wi;
+              sp.style.fontSize = tam + "px";
+              sp.textContent = w.w;
+              rowEl.appendChild(sp);
+              items.push({ el: sp, s: w.s, e: w.e, subida: tam >= 100 ? 12 : 5 });
+            });
+            gEl.appendChild(rowEl);
+          });
+          stage.appendChild(gEl);
+
+          var inicio = g[0].s;
+          var sig = grupos[gi + 1];
+          var finBase = Math.max(g[g.length - 1].e + 0.45, inicio + 0.26);
+          var fin = sig ? Math.min(finBase, Math.max(inicio + 0.12, sig[0].s - 0.01)) : finBase;
+
+          tl.set(gEl, { opacity: 1 }, inicio);
+          items.forEach(function (w, idxItem) {
+            var animarLlegada = idxItem === 0 ? pausaAntesGrupo >= 0.14 : (w.s - items[idxItem - 1].e) >= 0.14 || true;
+            if (idxItem === 0 && pausaAntesGrupo < 0.14) {
+              tl.set(w.el, { opacity: 1, y: 0 }, w.s);
+            } else if (animarLlegada) {
+              var dur = Math.max(0.06, Math.min(0.22, (w.e - w.s) * 0.6));
+              tl.fromTo(
+                w.el,
+                { opacity: 0, y: w.subida },
+                { opacity: 1, y: 0, duration: dur, ease: "power3.out" },
+                w.s
+              );
+            }
+          });
+          tl.set(gEl, { opacity: 0 }, fin);
+        });
+
+        tl.seek(0);
+        window.__timelines["captions"] = tl;
+      })();
+    </script>
+  </div>
+</template>

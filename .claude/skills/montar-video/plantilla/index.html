@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Plantilla de montaje — 5 capas (9:16)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 1080px;
+    height: 1920px;
+    overflow: hidden;
+    background: #0B0D10;
+  }
+  [data-composition-id="montaje"] {
+    position: relative;
+    width: 1080px;
+    height: 1920px;
+    overflow: hidden;
+    background: #0B0D10;
+  }
+  .capa {
+    position: absolute;
+    inset: 0;
+    width: 1080px;
+    height: 1920px;
+  }
+  #persona { z-index: 1; object-fit: cover; display: block; }
+
+  /* Capa opcional de tercio inferior (ojos en y≈640, texto en y≈1280):
+     degradado negro neutro + desenfoque progresivo enmascarado desde y=1250.
+     Para desactivarla en un estilo que no la use, borrÃ¡ o comentÃ¡ #tercio-inferior. */
+  #tercio-inferior {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .tercio-blur {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 1250px;
+    bottom: 0;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.72) 34%, #000000 72%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.72) 34%, #000000 72%);
+  }
+  .tercio-oscuro {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 62%,
+      rgba(0, 0, 0, 0.35) 75%,
+      rgba(0, 0, 0, 0.68) 100%
+    );
+  }
+
+  #corte-hf { z-index: 10; }
+  #corte-lemo { z-index: 11; object-fit: cover; display: block; }
+  #grafico-1 { z-index: 20; }
+  #subtitulos { z-index: 30; }
+</style>
+</head>
+<body>
+  <!-- Reemplazar data-duration por la duración exacta de base.mp4 -->
+  <div data-composition-id="montaje" data-start="0" data-duration="20" data-width="1080" data-height="1920">
+
+    <!-- CAPA 1: La persona (base.mp4, siempre silenciada; el audio va en la Capa 5) -->
+    <video id="persona" class="capa" src="base.mp4" data-start="0" data-duration="20" data-track-index="0" muted playsinline></video>
+
+    <!-- CAPA 1B (opcional): Tratamiento de tercio inferior desde y=1250 (oscurecido + blur enmascarado) -->
+    <div id="tercio-inferior" data-layout-ignore>
+      <div class="tercio-blur" data-layout-ignore></div>
+      <div class="tercio-oscuro" data-layout-ignore></div>
+    </div>
+
+    <!-- CAPA 2: Cortes a pantalla completa (HyperFrames propio y/o clip MP4 de Lemo) -->
+    <div id="corte-hf" class="capa clip"
+         data-composition-id="escena-corte"
+         data-composition-src="compositions/escena-corte.html"
+         data-start="6.0" data-duration="3.0" data-track-index="1"></div>
+
+    <!-- Ejemplo de corte a un MP4 renderizado con Lemo (hijo directo, nunca dentro de un div con data-start):
+    <video id="corte-lemo" class="capa clip" src="corte-lemo.mp4"
+           data-start="12.0" data-duration="3.0" data-track-index="1" muted playsinline></video>
+    -->
+
+    <!-- CAPA 3: Gráficos encima (fondo transparente, alrededor del tercio inferior sin tapar la cabeza) -->
+    <div id="grafico-1" class="capa clip"
+         data-composition-id="grafico-encima"
+         data-composition-src="compositions/grafico-encima.html"
+         data-start="1.5" data-duration="3.0" data-track-index="2"></div>
+
+    <!-- CAPA 4: Subtítulos sincronizados con base-palabras.json -->
+    <div id="subtitulos" class="capa clip"
+         data-composition-id="subtitulos"
+         data-composition-src="compositions/subtitulos.html"
+         data-track-kind="captions"
+         data-start="0" data-duration="20" data-track-index="3"></div>
+
+    <!-- CAPA 5: Audio (voz continua + música opcional con ducking + SFX desde cue-sheet.json) -->
+    <audio id="voz" src="base.mp4" data-start="0" data-duration="20" data-track-index="4" data-volume="1"></audio>
+    <!-- Música opcional (generar data-automation con scripts/generar_ducking.py --html-attr):
+    <audio id="musica" src="musica.wav" data-start="0" data-duration="20" data-track-index="5"
+           data-fade-in="0.4" data-fade-out="0.4"
+           data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0.32},{&quot;t&quot;:0.15,&quot;v&quot;:0.14}]}]}"></audio>
+    -->
+    <!-- SFX opcionales (generar etiquetas <audio> desde cue-sheet.json con scripts/cue_a_audio.py):
+    <audio id="sfx-01" src="sfx/whoosh.mp3" data-start="5.94" data-duration="0.57" data-volume="0.2818" data-track-index="6"></audio>
+    -->
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    window.__timelines = window.__timelines || {};
+    const tl = gsap.timeline({ paused: true });
+    // Si usás #corte-lemo, podés agregar fade breve en su data-start y data-start + data-duration - 0.16.
+    window.__timelines["montaje"] = tl;
+  </script>
+</body>
+</html>

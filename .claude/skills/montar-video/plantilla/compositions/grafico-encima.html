@@ -1,0 +1,84 @@
+<template id="grafico-encima-template">
+  <div data-composition-id="grafico-encima" data-width="1080" data-height="1920">
+    <style>
+      [data-composition-id="grafico-encima"] {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        background: transparent;
+        pointer-events: none;
+        font-family: 'Inter', sans-serif;
+      }
+      /* Zona segura 9:16 alrededor del tercio inferior (ojos en y≈640, texto en y≈1280):
+         centrado en x=510 (left=90, width=840), debajo del mentón y arriba de los subtítulos, sin tapar la cabeza. */
+      .ov-slot {
+        position: absolute;
+        top: 1005px;
+        left: 90px;
+        width: 840px;
+      }
+      .ov-card {
+        background: #EAE9E5;
+        color: #111111;
+        border-left: 14px solid #E30613;
+        padding: 22px 28px;
+      }
+      .ov-label {
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-bottom: 2px solid #111111;
+        padding-bottom: 8px;
+        margin-bottom: 14px;
+      }
+      .ov-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .ov-num {
+        font-size: 96px;
+        font-weight: 700;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+      }
+      .ov-copy {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1.2;
+        max-width: 440px;
+      }
+    </style>
+
+    <div class="ov-slot" data-layout-allow-overflow>
+      <div id="ov-card" class="ov-card">
+        <div class="ov-label">INDICADOR · REFERENCIA</div>
+        <div class="ov-row">
+          <div id="ov-num" class="ov-num">0%</div>
+          <div class="ov-copy">Etiqueta corta sincronizada con la palabra hablada</div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from("#ov-card", { clipPath: "inset(0 100% 0 0)", duration: 0.24, ease: "power3.out" }, 0.0);
+      const st = { v: 0 };
+      const numEl = document.getElementById("ov-num");
+      tl.to(st, {
+        v: 40,
+        duration: 0.45,
+        ease: "steps(8)",
+        onUpdate: () => { numEl.textContent = Math.round(st.v) + "%"; }
+      }, 0.08);
+      tl.to("#ov-card", { clipPath: "inset(0 0 0 100%)", duration: 0.2, ease: "power3.in" }, 2.78);
+
+      window.__timelines["grafico-encima"] = tl;
+    </script>
+  </div>
+</template>

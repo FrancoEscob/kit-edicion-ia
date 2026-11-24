@@ -1,0 +1,9 @@
+{
+  "name": "kit-edicion-ia",
+  "private": true,
+  "description": "Kit de edición de video con IA: lo que el kit necesita de npm, con versión fija.",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "hyperframes": "0.9.90"
+  }
+}

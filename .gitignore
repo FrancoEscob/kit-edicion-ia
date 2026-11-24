@@ -1,0 +1,24 @@
+# Lo que baja el setup desde cada fuente
+.externas/
+.claude/skills/lemo-opuscar/
+.claude/skills/hyperframes*/
+.claude/skills/remotion*/
+.claude/skills/media-use/
+.claude/skills/reverse-any-video/
+.agents/
+skills-lock.json
+# Los videos de cada uno
+proyectos/*
+!proyectos/.gitkeep
+estilos/propios/*
+!estilos/propios/.gitkeep
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+.claude/skills/remake/
+.claude/skills/dissect/
+# Las referencias de cada uno
+referencias/*
+!referencias/README.md

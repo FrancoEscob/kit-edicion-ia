@@ -1,0 +1,137 @@
+<template id="subtitulos-template">
+  <div data-composition-id="subtitulos" data-width="1080" data-height="1920">
+    <style>
+      [data-composition-id="subtitulos"] {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        background: transparent;
+        pointer-events: none;
+        font-family: 'Inter', sans-serif;
+      }
+      /* Zona segura 9:16: centro en x=510 (left=90, width=840), sobre el tercio inferior (y≈1250–1340) */
+      #sub-root {
+        position: absolute;
+        left: 90px;
+        top: 1245px;
+        width: 840px;
+        height: 160px;
+      }
+      .cap-group {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 840px;
+        display: flex;
+        justify-content: center;
+        opacity: 0;
+      }
+      .cap-box {
+        display: inline-flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px 16px;
+        padding: 12px 24px;
+        background: rgba(10, 12, 16, 0.72);
+        border-radius: 14px;
+      }
+      .cap-word {
+        font-size: 58px;
+        font-weight: 800;
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+        color: #F4F5F7;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+        display: inline-block;
+      }
+    </style>
+
+    <div id="sub-root" data-layout-allow-overflow></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      function agruparPalabras(palabras) {
+        const grupos = [];
+        let cur = [];
+        palabras.forEach((w) => {
+          if (cur.length) {
+            const prev = cur[cur.length - 1];
+            const gap = w.s - prev.e;
+            const punt = /[.,?!;:]/.test(prev.w.slice(-1));
+            const largo = cur.reduce((a, x) => a + x.w.length + 1, 0) + w.w.length;
+            if (cur.length >= 3 || largo > 18 || gap > 0.26 || punt) {
+              grupos.push(cur);
+              cur = [];
+            }
+          }
+          cur.push(w);
+        });
+        if (cur.length) grupos.push(cur);
+        return grupos.map((g, idx) => {
+          const start = g[0].s;
+          const nextStart = idx + 1 < grupos.length ? grupos[idx + 1][0].s : g[g.length - 1].e + 0.35;
+          const end = Math.min(Math.max(g[g.length - 1].e + 0.25, start + 0.26), nextStart);
+          return { id: "cg-" + idx, start, end, words: g };
+        });
+      }
+
+      // Usa window.BASE_PALABRAS si fue inyectado; si no, usa CAP_GROUPS de ejemplo o armar_subtitulos.py
+      const FALLBACK_GROUPS = [
+        {
+          id: "cg-0",
+          start: 0.2,
+          end: 1.6,
+          words: [
+            { i: 0, w: "Ejemplo", s: 0.2, e: 0.8 },
+            { i: 1, w: "en", s: 0.8, e: 1.0 },
+            { i: 2, w: "vivo", s: 1.0, e: 1.4 }
+          ]
+        }
+      ];
+      const CAP_GROUPS = Array.isArray(window.BASE_PALABRAS) && window.BASE_PALABRAS.length
+        ? agruparPalabras(window.BASE_PALABRAS)
+        : FALLBACK_GROUPS;
+
+      const subRoot = document.getElementById("sub-root");
+      CAP_GROUPS.forEach((g) => {
+        const wrap = document.createElement("div");
+        wrap.className = "cap-group";
+        wrap.id = g.id;
+        const box = document.createElement("div");
+        box.className = "cap-box";
+        g.words.forEach((w) => {
+          const sp = document.createElement("span");
+          sp.className = "cap-word";
+          sp.id = "w-" + w.i;
+          sp.textContent = w.w;
+          box.appendChild(sp);
+        });
+        wrap.appendChild(box);
+        subRoot.appendChild(wrap);
+      });
+
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      CAP_GROUPS.forEach((g) => {
+        const gSel = "#" + g.id;
+        tl.set(gSel, { opacity: 1 }, g.start);
+        tl.fromTo(
+          gSel,
+          { y: 10 },
+          { y: 0, duration: Math.min(0.16, (g.end - g.start) * 0.4), ease: "power3.out" },
+          g.start
+        );
+        g.words.forEach((w) => {
+          const wSel = "#w-" + w.i;
+          tl.to(wSel, { color: "#FFE600", scale: 1.05, duration: 0.04, ease: "none" }, w.s);
+          tl.to(wSel, { color: "#F4F5F7", scale: 1.0, duration: 0.05, ease: "none" }, Math.min(w.e + 0.02, g.end));
+        });
+        // Cierre duro obligatorio para que nunca queden dos grupos visibles a la vez
+        tl.set(gSel, { opacity: 0 }, g.end);
+      });
+
+      window.__timelines["subtitulos"] = tl;
+    </script>
+  </div>
+</template>

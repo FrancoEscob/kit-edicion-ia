@@ -1,0 +1,77 @@
+<template id="escena-corte-template">
+  <div data-composition-id="escena-corte" data-width="1080" data-height="1920">
+    <style>
+      [data-composition-id="escena-corte"] {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        background: #EAE9E5;
+        color: #111111;
+        overflow: hidden;
+        font-family: 'Inter', sans-serif;
+      }
+      .corte-inner {
+        width: 100%;
+        height: 100%;
+        /* Llena el 9:16 entero: el bloque ocupa del tercio superior (y=290) hasta arriba de los subtítulos (y=1160)
+           y se centra en ese alto. Nada de una tarjeta chica arriba con media pantalla vacía. */
+        padding: 290px 90px 760px 90px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 44px;
+        box-sizing: border-box;
+      }
+      .corte-kicker {
+        border-top: 2px solid #111111;
+        padding-top: 16px;
+        font-size: 34px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .corte-dato {
+        font-size: 300px;
+        font-weight: 700;
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        font-variant-numeric: tabular-nums;
+      }
+      .corte-barra {
+        width: 100%;
+        height: 24px;
+        background: #E30613;
+        transform-origin: left center;
+      }
+      .corte-bajada {
+        font-size: 56px;
+        font-weight: 500;
+        line-height: 1.25;
+        color: #2A2A27;
+      }
+    </style>
+
+    <div id="corte-stage" style="width:100%;height:100%;" data-layout-allow-overflow>
+      <div class="corte-inner">
+        <div class="corte-kicker">DATO CLAVE</div>
+        <div id="corte-dato" class="corte-dato">3×</div>
+        <div id="corte-barra" class="corte-barra"></div>
+        <div id="corte-bajada" class="corte-bajada">Reemplazar con la idea exacta de la frase</div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.from("#corte-stage", { clipPath: "inset(100% 0 0 0)", duration: 0.25, ease: "expo.out" }, 0.0);
+      tl.from("#corte-dato", { y: 80, opacity: 0, duration: 0.32, ease: "power3.out" }, 0.1);
+      tl.from("#corte-barra", { scaleX: 0, duration: 0.35, ease: "power2.out" }, 0.22);
+      tl.from("#corte-bajada", { y: 30, opacity: 0, duration: 0.28, ease: "power3.out" }, 0.32);
+      tl.to("#corte-stage", { clipPath: "inset(0 0 100% 0)", duration: 0.22, ease: "expo.in" }, 2.78);
+
+      window.__timelines["escena-corte"] = tl;
+    </script>
+  </div>
+</template>

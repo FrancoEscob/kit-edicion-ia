@@ -1,0 +1,54 @@
+{
+  "_que_es": "Lo que el setup baja de su fuente original. Para actualizar, cambiá la versión acá y corré 'arreglá el kit'.",
+  "hyperframes": {
+    "repo": "https://github.com/heygen-com/hyperframes",
+    "commit": "45846f1e6d5609462d29652315d0d4254fe92c24",
+    "npm": "hyperframes@0.9.90",
+    "instalar": "npx -y skills add heygen-com/hyperframes",
+    "siempre": true
+  },
+  "lemo": {
+    "repo": "https://github.com/lemomo-ai/lemo-opuscar",
+    "commit": "8ca0dd805e214bcc1d30714cd5b9d21cc02a454b",
+    "skill": "plugin/skills/lemo-opuscar",
+    "siempre": true
+  },
+  "remotion": {
+    "repo": "https://github.com/remotion-dev/skills",
+    "commit": "89c8afa3eee9cdd83838ac31979c2ba1384615aa",
+    "instalar": "npx -y skills add remotion-dev/skills",
+    "siempre": false,
+    "_nota": "Solo cuando el alumno lo pide. Gratis para personas y equipos de hasta 3."
+  },
+  "modelos": {
+    "silero_vad": {
+      "url": "https://github.com/snakers4/silero-vad/raw/v5.1.2/src/silero_vad/data/silero_vad.onnx",
+      "para": "silencios"
+    },
+    "yunet": {
+      "url": "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+      "para": "caras (vertical que sigue la cara)"
+    },
+    "rnnoise": {
+      "url": "https://github.com/GregorR/rnnoise-models/raw/master/conjoined-burgers-2018-08-28/cb.rnnn",
+      "para": "ruido de fondo"
+    }
+  },
+  "_nota_gorg": "De Gorg (producto cerrado) no se baja nada: su criterio está reescrito en editar-video/criterio/.",
+  "remake": {
+    "repo": "https://github.com/Wandersonjack/avocado-remake",
+    "commit": "a5913a00e5ffab3b604bae3bd0106bec029cd60d",
+    "skill": "skills/remake",
+    "licencia": "MIT",
+    "siempre": true,
+    "_nota": "Reconstruye un video entero como proyecto editable de HyperFrames, gratis (pasos 1 a 5). El paso 6 (rehacerlo con tu marca) usa créditos pagos de Avocado: solo si la persona lo pide."
+  },
+  "dissect": {
+    "repo": "https://github.com/0xpratzyy/dissect",
+    "commit": "66993ef6cc4d0688601c4b7dcab7b2ab5f9e4805",
+    "skill": "plugins/dissect/skills/dissect",
+    "licencia": "MIT",
+    "siempre": true,
+    "_nota": "Mide uno o varios videos de referencia y escribe un plano (blueprint) y una fórmula común; check puntúa un render contra la referencia. Corre local con uv."
+  }
+}

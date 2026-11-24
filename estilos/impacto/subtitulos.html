@@ -1,0 +1,192 @@
+<template id="captions-template">
+  <div data-composition-id="captions" data-width="1080" data-height="1920">
+    <div id="sub-stage"></div>
+    <style>
+      [data-composition-id="captions"] {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        background: transparent;
+        font-family: "Archivo Black", sans-serif;
+      }
+      #sub-stage {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .sub-group {
+        position: absolute;
+        left: 90px;
+        width: 840px;
+        top: 1050px;
+        height: 260px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-end;
+        align-items: baseline;
+        justify-content: center;
+        column-gap: 18px;
+        row-gap: 6px;
+        opacity: 0;
+        overflow: visible;
+      }
+      .sub-word {
+        display: inline-block;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+        line-height: 1.05;
+        text-transform: uppercase;
+        color: #ffffff;
+        text-shadow: 0 4px 0 rgba(0, 0, 0, 0.85), 0 8px 22px rgba(0, 0, 0, 0.65);
+        opacity: 0;
+        white-space: nowrap;
+      }
+      .sub-word.enfasis {
+        color: #ffd400;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true });
+
+        var VACIAS = {
+          el: 1, la: 1, los: 1, las: 1, un: 1, una: 1, unos: 1, unas: 1,
+          de: 1, del: 1, al: 1, a: 1, en: 1, con: 1, por: 1, para: 1,
+          sin: 1, sobre: 1, entre: 1, y: 1, e: 1, o: 1, u: 1, ni: 1,
+          que: 1, pero: 1, sino: 1, como: 1, si: 1, no: 1, me: 1, te: 1,
+          se: 1, nos: 1, les: 1, lo: 1, le: 1, mi: 1, tu: 1, su: 1,
+          es: 1, son: 1, era: 1, fue: 1, ser: 1, hay: 1, muy: 1, ya: 1,
+          yo: 1, vos: 1, eso: 1, esto: 1, esa: 1, este: 1, esta: 1,
+        };
+
+        function cargarPalabras() {
+          if (Array.isArray(window.BASE_PALABRAS)) return window.BASE_PALABRAS;
+          var rutas = ["base-palabras.json", "../base-palabras.json"];
+          for (var i = 0; i < rutas.length; i++) {
+            try {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", rutas[i], false);
+              xhr.send(null);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                var parsed = JSON.parse(xhr.responseText);
+                if (Array.isArray(parsed)) return parsed;
+              }
+            } catch (e) {}
+          }
+          return [];
+        }
+
+        function limpiar(w) {
+          return w.toLowerCase().replace(/[^a-záéíóúñü0-9$%]/gi, "");
+        }
+
+        function elegirEnfasis(grupo) {
+          for (var i = 0; i < grupo.length; i++) {
+            if (/[0-9$€%]/.test(grupo[i].w)) return i;
+          }
+          var mejor = -1;
+          var mejorLargo = 0;
+          for (var j = 0; j < grupo.length; j++) {
+            var c = limpiar(grupo[j].w);
+            if (!VACIAS[c] && c.length > mejorLargo) {
+              mejorLargo = c.length;
+              mejor = j;
+            }
+          }
+          return mejor >= 0 ? mejor : grupo.length - 1;
+        }
+
+        function ajustarTamano(texto, base, min, maxAncho) {
+          if (window.__hyperframes && typeof window.__hyperframes.fitTextFontSize === "function") {
+            var res = window.__hyperframes.fitTextFontSize(texto.toUpperCase(), {
+              fontFamily: "Archivo Black",
+              fontWeight: 400,
+              baseFontSize: base,
+              minFontSize: min,
+              maxWidth: maxAncho,
+              step: 2,
+            });
+            if (res && res.fontSize) return Math.min(base, Math.max(min, res.fontSize));
+          }
+          var estimado = texto.length * base * 0.72;
+          if (estimado <= maxAncho) return base;
+          return Math.max(min, Math.floor((base * maxAncho) / estimado));
+        }
+
+        var palabras = cargarPalabras();
+        var stage = document.getElementById("sub-stage");
+        var grupos = [];
+        var actual = [];
+
+        for (var i = 0; i < palabras.length; i++) {
+          var p = palabras[i];
+          var prev = actual.length ? actual[actual.length - 1] : null;
+          var pausa = prev ? p.s - prev.e : 0;
+          var finFrase = prev && /[.!?,;:]$/.test(prev.w);
+          var largoActual = actual.map(function (x) { return x.w; }).join(" ").length;
+          if (actual.length && (actual.length >= 3 || pausa >= 0.24 || finFrase || largoActual + 1 + p.w.length > 15)) {
+            grupos.push(actual);
+            actual = [];
+          }
+          actual.push(p);
+        }
+        if (actual.length) grupos.push(actual);
+
+        grupos.forEach(function (g, gi) {
+          var texto = g.map(function (w) { return w.w; }).join(" ");
+          var idxEnfasis = elegirEnfasis(g);
+          var tamBase = ajustarTamano(texto, 84, 58, 760);
+          var tamEnfasis = Math.min(104, Math.round(tamBase * 1.14));
+
+          var gEl = document.createElement("div");
+          gEl.className = "sub-group";
+          gEl.id = "impacto-g-" + gi;
+
+          var spans = g.map(function (w, wi) {
+            var esEnfasis = wi === idxEnfasis;
+            var sp = document.createElement("span");
+            sp.className = esEnfasis ? "sub-word enfasis" : "sub-word";
+            sp.id = "impacto-w-" + gi + "-" + wi;
+            sp.style.fontSize = (esEnfasis ? tamEnfasis : tamBase) + "px";
+            sp.textContent = w.w.toUpperCase();
+            gEl.appendChild(sp);
+            return { el: sp, s: w.s, e: w.e, enfasis: esEnfasis };
+          });
+          stage.appendChild(gEl);
+
+          var inicio = g[0].s;
+          var sig = grupos[gi + 1];
+          var finBase = Math.max(g[g.length - 1].e + 0.40, inicio + 0.26);
+          var fin = sig ? Math.min(finBase, Math.max(inicio + 0.12, sig[0].s - 0.01)) : finBase;
+
+          tl.set(gEl, { opacity: 1 }, inicio);
+          spans.forEach(function (w) {
+            if (w.enfasis) {
+              tl.fromTo(
+                w.el,
+                { opacity: 0, scale: 0.84, y: 10 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.16, ease: "back.out(1.4)" },
+                w.s
+              );
+            } else {
+              tl.fromTo(
+                w.el,
+                { opacity: 0, scale: 0.9, y: 10 },
+                { opacity: 1, scale: 1, y: 0, duration: 0.13, ease: "power3.out" },
+                w.s
+              );
+            }
+          });
+          tl.set(gEl, { opacity: 0 }, fin);
+        });
+
+        tl.seek(0);
+        window.__timelines["captions"] = tl;
+      })();
+    </script>
+  </div>
+</template>

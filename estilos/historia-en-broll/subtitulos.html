@@ -1,0 +1,217 @@
+<template id="captions-template">
+  <div data-composition-id="captions" data-width="1080" data-height="1920">
+    <div id="sub-stage"></div>
+    <style>
+      [data-composition-id="captions"] {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        background: transparent;
+        font-family: "Inter", sans-serif;
+      }
+      #sub-stage {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .sub-group {
+        position: absolute;
+        left: 90px;
+        width: 840px;
+        top: 700px;
+        height: 520px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        overflow: visible;
+      }
+      .stack-pullback {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+        overflow: visible;
+      }
+      .sub-row {
+        display: flex;
+        justify-content: center;
+        align-items: baseline;
+        column-gap: 14px;
+        white-space: nowrap;
+        overflow: visible;
+      }
+      .sub-word {
+        display: inline-block;
+        color: #ffffff;
+        line-height: 1.02;
+        text-shadow: 0 0 18px rgba(255, 255, 255, 0.24), 0 3px 10px rgba(0, 0, 0, 0.52);
+        opacity: 0;
+        white-space: nowrap;
+      }
+      .sub-word.tam-s { font-weight: 700; letter-spacing: -0.045em; }
+      .sub-word.tam-m { font-weight: 800; letter-spacing: -0.05em; }
+      .sub-word.tam-l { font-weight: 800; letter-spacing: -0.05em; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script>
+      (function () {
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true });
+
+        var ARTICULOS = {
+          el: 1, la: 1, los: 1, las: 1, un: 1, una: 1, mi: 1, tu: 1, su: 1,
+          mis: 1, tus: 1, sus: 1, del: 1, al: 1, este: 1, esta: 1, ese: 1, esa: 1,
+        };
+
+        function cargarPalabras() {
+          if (Array.isArray(window.BASE_PALABRAS)) return window.BASE_PALABRAS;
+          var rutas = ["base-palabras.json", "../base-palabras.json"];
+          for (var i = 0; i < rutas.length; i++) {
+            try {
+              var xhr = new XMLHttpRequest();
+              xhr.open("GET", rutas[i], false);
+              xhr.send(null);
+              if (xhr.status >= 200 && xhr.status < 300) {
+                var parsed = JSON.parse(xhr.responseText);
+                if (Array.isArray(parsed)) return parsed;
+              }
+            } catch (e) {}
+          }
+          return [];
+        }
+
+        function limpiar(w) {
+          return w.toLowerCase().replace(/[^a-záéíóúñü0-9$%]/gi, "");
+        }
+
+        function ajustarFila(texto, base, min, peso) {
+          if (window.__hyperframes && typeof window.__hyperframes.fitTextFontSize === "function") {
+            var res = window.__hyperframes.fitTextFontSize(texto, {
+              fontFamily: "Inter",
+              fontWeight: peso,
+              baseFontSize: base,
+              minFontSize: min,
+              maxWidth: 820,
+              step: 2,
+            });
+            if (res && res.fontSize) return Math.min(base, Math.max(min, res.fontSize));
+          }
+          var estimado = texto.length * base * 0.56;
+          if (estimado <= 820) return base;
+          return Math.max(min, Math.floor((base * 820) / estimado));
+        }
+
+        var palabras = cargarPalabras();
+        var stage = document.getElementById("sub-stage");
+        var pilas = [];
+        var actual = [];
+
+        for (var i = 0; i < palabras.length; i++) {
+          var p = palabras[i];
+          var prev = actual.length ? actual[actual.length - 1] : null;
+          var pausa = prev ? p.s - prev.e : 0;
+          var finFrase = prev && /[.!?]$/.test(prev.w);
+          var largoActual = actual.map(function (x) { return x.w; }).join(" ").length;
+          if (actual.length && (actual.length >= 5 || pausa >= 0.8 || finFrase || largoActual + 1 + p.w.length > 26)) {
+            pilas.push(actual);
+            actual = [];
+          }
+          actual.push(p);
+        }
+        if (actual.length) pilas.push(actual);
+
+        pilas.forEach(function (g, gi) {
+          var gEl = document.createElement("div");
+          gEl.className = "sub-group";
+          gEl.id = "broll-g-" + gi;
+
+          var wrap = document.createElement("div");
+          wrap.className = "stack-pullback";
+          wrap.id = "broll-pb-" + gi;
+          gEl.appendChild(wrap);
+
+          var corteGolpe = g.length - 1;
+          if (g.length >= 2) {
+            var penultima = limpiar(g[g.length - 2].w);
+            if (ARTICULOS[penultima] || (g[g.length - 2].w.length + g[g.length - 1].w.length <= 12)) {
+              corteGolpe = g.length - 2;
+            }
+          }
+
+          var arriba = g.slice(0, corteGolpe);
+          var golpe = g.slice(corteGolpe);
+          var filas = [];
+          if (arriba.length) {
+            filas.push({ palabras: arriba, clase: "tam-s", base: 58, peso: 700, subida: 5 });
+          }
+          var textoGolpe = golpe.map(function (w) { return w.w; }).join(" ");
+          var esLargo = textoGolpe.length > 10;
+          filas.push({
+            palabras: golpe,
+            clase: esLargo ? "tam-m" : "tam-l",
+            base: esLargo ? 100 : 164,
+            peso: 800,
+            subida: esLargo ? 8 : 12,
+          });
+
+          var items = [];
+          filas.forEach(function (f, fi) {
+            var rowEl = document.createElement("div");
+            rowEl.className = "sub-row";
+            var texto = f.palabras.map(function (w) { return w.w; }).join(" ");
+            var tam = ajustarFila(texto, f.base, 56, f.peso);
+            f.palabras.forEach(function (w, wi) {
+              var sp = document.createElement("span");
+              sp.className = "sub-word " + f.clase;
+              sp.id = "broll-w-" + gi + "-" + fi + "-" + wi;
+              sp.style.fontSize = tam + "px";
+              sp.textContent = w.w;
+              rowEl.appendChild(sp);
+              items.push({ el: sp, s: w.s, e: w.e, subida: f.subida });
+            });
+            wrap.appendChild(rowEl);
+          });
+          stage.appendChild(gEl);
+
+          var inicio = g[0].s;
+          var sig = pilas[gi + 1];
+          var finBase = Math.max(g[g.length - 1].e + 0.45, inicio + 0.9);
+          var fin = sig ? Math.min(Math.max(finBase, sig[0].s - 0.01), sig[0].s - 0.01) : finBase;
+          if (sig && sig[0].s - g[g.length - 1].e >= 0.8) {
+            fin = Math.min(g[g.length - 1].e + 0.45, sig[0].s - 0.01);
+          }
+          fin = Math.max(inicio + 0.2, fin);
+
+          tl.set(gEl, { opacity: 1 }, inicio);
+          tl.fromTo(
+            wrap,
+            { scale: 1.028 },
+            { scale: 1.0, duration: fin - inicio, ease: "none" },
+            inicio
+          );
+
+          items.forEach(function (w) {
+            var dur = Math.max(0.08, Math.min(0.22, (w.e - w.s) * 0.6));
+            tl.fromTo(
+              w.el,
+              { opacity: 0, y: w.subida, filter: "blur(9px)" },
+              { opacity: 1, y: 0, filter: "blur(0px)", duration: dur, ease: "power3.out" },
+              w.s
+            );
+          });
+
+          tl.set(gEl, { opacity: 0 }, fin);
+        });
+
+        tl.seek(0);
+        window.__timelines["captions"] = tl;
+      })();
+    </script>
+  </div>
+</template>
